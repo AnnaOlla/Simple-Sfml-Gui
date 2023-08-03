@@ -5,9 +5,17 @@
 
 #include <vector>
 #include <functional>
+#include <cmath>
 
 namespace SfGui
 {
+    enum class WidgetState
+    {
+        Idle,
+        Hovered,
+        Pressed
+    };
+
     class ColorSettings
     {
         public:
@@ -58,9 +66,9 @@ namespace SfGui
     {
         public:
             TextSettings(const sf::Font& font,
-                         const unsigned int characterSize,
-                         const TextHorizontalAlignment horizontalAlignment,
-                         const TextVerticalAlignment verticalAlignment);
+                         const unsigned int characterSize = 30,
+                         const TextHorizontalAlignment horizontalAlignment = TextHorizontalAlignment::Center,
+                         const TextVerticalAlignment verticalAlignment = TextVerticalAlignment::Center);
             virtual ~TextSettings();
 
             const sf::Font& getFont() const;
@@ -79,16 +87,19 @@ namespace SfGui
             FontMetrics calculateFontMetrics();
     };
 
-    struct Style
+    struct Theme
     {
         public:
-            Style(const TextSettings&, const ColorSettings&, const ColorSettings&, const ColorSettings&);
-            virtual ~Style();
+            Theme(const TextSettings& text,
+                  const ColorSettings& idle,
+                  const ColorSettings& hover,
+                  const ColorSettings& press);
+            virtual ~Theme();
 
             const TextSettings& getTextSettings() const;
             const ColorSettings& getIdleColorSettings() const;
-            const ColorSettings& getHoverColorSettings() const;
-            const ColorSettings& getPressColorSettings() const;
+            const ColorSettings& getHoveredColorSettings() const;
+            const ColorSettings& getPressedColorSettings() const;
 
         private:
             const TextSettings& m_textSettings;
@@ -128,25 +139,32 @@ namespace SfGui
         friend class WidgetPool;
 
         public:
-            Widget(const sf::Vector2f& position,
-                   const Style& style,
-                   const std::function <void()> doActionOnButtonRelease);
+            Widget();
             virtual ~Widget();
 
+            virtual void refreshStyles();
+
+            virtual void setPosition(const sf::Vector2f& position);
+            virtual void setSize(const sf::Vector2f& size);
+            void setTheme(const Theme& theme);
+            void setAction(const std::function <void()> doActionOnButtonRelease);
+
+            sf::Vector2f getPosition() const;
+            sf::Vector2f getSize() const;
+            const Theme& getTheme() const;
             sf::FloatRect getLocalBounds() const;
             sf::FloatRect getGlobalBounds() const;
 
         protected:
             sf::RectangleShape m_rectangle;
-            const Style& m_style;
-            const sf::Vector2f m_padding;
-
-            const std::function <void()> m_doActionOnClick;
-            virtual void setPressedStyle() = 0;
-            virtual void setIdleStyle() = 0;
-            virtual void setHoverStyle() = 0;
+            const Theme* m_theme;
+            sf::Vector2f m_padding;
+            WidgetState m_state;
+            std::function <void()> m_doActionOnClick;
 
         private:
+            void changeState(const WidgetState state);
+
             // Inherited from sf::Drawable
             virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override = 0;
     };
@@ -154,42 +172,28 @@ namespace SfGui
     class TextBasedWidget : public Widget
     {
         public:
-            TextBasedWidget(const sf::Vector2f& position,
-                            const sf::String& text,
-                            const Style& style,
-                            const std::function <void()> doActionOnButtonRelease);
-            TextBasedWidget(const sf::Vector2f& position,
-                            const sf::Vector2f& size,
-                            const sf::String& text,
-                            const Style& style,
-                            const std::function <void()> doActionOnButtonRelease);
+            TextBasedWidget();
             virtual ~TextBasedWidget();
 
-            sf::String getText() const;
+            virtual void setPosition(const sf::Vector2f& position) override;
+            virtual void refreshStyles() override;
+
+            sf::String getString(const sf::String separator = sf::String(L" ")) const;
+            void setString(const sf::String& text, const bool isMultiline = false);
 
         protected:
-            sf::Text m_text;
-
-            virtual void setPressedStyle() override;
-            virtual void setIdleStyle() override;
-            virtual void setHoverStyle() override;
+            std::vector <sf::Text> m_lines;
 
         private:
             virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
+            void splitTextToLines(const sf::String& text);
+            void placeText();
     };
 
     class PushButton : public TextBasedWidget
     {
         public:
-            PushButton(const sf::Vector2f& position,
-                       const sf::String& text,
-                       const Style& style,
-                       const std::function <void()> onButtonRelease = nullptr);
-            PushButton(const sf::Vector2f& position,
-                       const sf::Vector2f& size,
-                       const sf::String& text,
-                       const Style& style,
-                       const std::function <void()> onButtonRelease = nullptr);
+            PushButton();
             virtual ~PushButton();
     };
 }

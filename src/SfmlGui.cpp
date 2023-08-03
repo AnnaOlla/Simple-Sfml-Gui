@@ -113,7 +113,7 @@ FontMetrics TextSettings::calculateFontMetrics()
     return metrics;
 }
 
-Style::Style(const TextSettings& textSettings,
+Theme::Theme(const TextSettings& textSettings,
              const ColorSettings& idleColorSettings,
              const ColorSettings& hoverColorSettings,
              const ColorSettings& pressColorSettings) :
@@ -125,27 +125,27 @@ Style::Style(const TextSettings& textSettings,
     //ctor
 }
 
-Style::~Style()
+Theme::~Theme()
 {
     //dtor
 }
 
-const TextSettings& Style::getTextSettings() const
+const TextSettings& Theme::getTextSettings() const
 {
     return m_textSettings;
 }
 
-const ColorSettings& Style::getIdleColorSettings() const
+const ColorSettings& Theme::getIdleColorSettings() const
 {
     return m_idleColorSettings;
 }
 
-const ColorSettings& Style::getHoverColorSettings() const
+const ColorSettings& Theme::getHoveredColorSettings() const
 {
     return m_hoverColorSettings;
 }
 
-const ColorSettings& Style::getPressColorSettings() const
+const ColorSettings& Theme::getPressedColorSettings() const
 {
     return m_pressColorSettings;
 }
@@ -194,7 +194,7 @@ void WidgetPool::processEvent(const sf::Event event)
         {
             if (m_lastHoveredWidget != nullptr)
             {
-                m_lastHoveredWidget->setIdleStyle();
+                m_lastHoveredWidget->changeState(WidgetState::Idle);
                 m_lastHoveredWidget = nullptr;
             }
 
@@ -206,7 +206,7 @@ void WidgetPool::processEvent(const sf::Event event)
             if (activeWidget == nullptr)
                 break;
 
-            activeWidget->setPressedStyle();
+            activeWidget->changeState(WidgetState::Pressed);
 
             m_lastHoveredWidget = activeWidget;
             m_lastClickedWidget = activeWidget;
@@ -222,7 +222,7 @@ void WidgetPool::processEvent(const sf::Event event)
             // We do not need to activate element that was not clicked
             if (m_lastClickedWidget == activeWidget)
             {
-                activeWidget->setHoverStyle();
+                activeWidget->changeState(WidgetState::Hovered);
                 if (activeWidget->m_doActionOnClick != nullptr)
                     activeWidget->m_doActionOnClick();
             }
@@ -237,7 +237,7 @@ void WidgetPool::processEvent(const sf::Event event)
             if (activeWidget == nullptr)
             {
                 if (m_lastHoveredWidget != nullptr)
-                    m_lastHoveredWidget->setIdleStyle();
+                    m_lastHoveredWidget->changeState(WidgetState::Idle);
             }
 
             // Change focus
@@ -245,14 +245,14 @@ void WidgetPool::processEvent(const sf::Event event)
             {
                 if (m_lastHoveredWidget != activeWidget)
                 {
-                    m_lastHoveredWidget->setIdleStyle();
-                    activeWidget->setHoverStyle();
+                    m_lastHoveredWidget->changeState(WidgetState::Idle);
+                    activeWidget->changeState(WidgetState::Hovered);
                 }
             }
 
             // Set focus
             else
-                activeWidget->setHoverStyle();
+                activeWidget->changeState(WidgetState::Hovered);
 
             m_lastHoveredWidget = activeWidget;
             break;
@@ -274,24 +274,36 @@ Widget* WidgetPool::getActiveWidget() const
     return it != std::reverse_iterator(m_widgets.cbegin()) ? *it : nullptr;
 }
 
-Widget::Widget(const sf::Vector2f& position, const Style& style, const std::function <void()> onButtonRelease)
-    : m_style(style), m_padding(5.0f, 10.0f), m_doActionOnClick(onButtonRelease)
+Widget::Widget() : m_theme(nullptr), m_padding(5.0f, 10.0f), m_state(WidgetState::Idle)
 {
     auto& ui = WidgetPool::getInstance();
     ui.addWidget(this);
-
-    const auto& colorSettings = m_style.getIdleColorSettings();
-
-    m_rectangle.setPosition(position);
-    m_rectangle.setFillColor(colorSettings.getFillColor());
-    m_rectangle.setOutlineThickness(colorSettings.getOutlineThickness());
-    m_rectangle.setOutlineColor(colorSettings.getOutlineColor());
-    m_rectangle.setTexture(colorSettings.getBackgroundTexture());
 }
 
 Widget::~Widget()
 {
     // dtor
+}
+
+void Widget::setPosition(const sf::Vector2f& position)
+{
+    m_rectangle.setPosition(position);
+}
+
+void Widget::setSize(const sf::Vector2f& size)
+{
+    m_rectangle.setSize(size);
+}
+
+void Widget::setTheme(const Theme& theme)
+{
+    m_theme = &theme;
+    refreshStyles();
+}
+
+void Widget::setAction(const std::function <void()> doActionOnButtonRelease)
+{
+    m_doActionOnClick = doActionOnButtonRelease;
 }
 
 sf::FloatRect Widget::getLocalBounds() const
@@ -304,19 +316,34 @@ sf::FloatRect Widget::getGlobalBounds() const
     return m_rectangle.getGlobalBounds();
 }
 
-void Widget::setPressedStyle()
+void Widget::refreshStyles()
 {
-    // pure virtual
+    const ColorSettings* colorSettings;
+    switch (m_state)
+    {
+        case WidgetState::Idle:
+            colorSettings = &(m_theme->getIdleColorSettings());
+            break;
+
+        case WidgetState::Hovered:
+            colorSettings = &(m_theme->getHoveredColorSettings());
+            break;
+
+        case WidgetState::Pressed:
+            colorSettings = &(m_theme->getPressedColorSettings());
+            break;
+    }
+
+    m_rectangle.setFillColor(colorSettings->getFillColor());
+    m_rectangle.setOutlineThickness(colorSettings->getOutlineThickness());
+    m_rectangle.setOutlineColor(colorSettings->getOutlineColor());
+    m_rectangle.setTexture(colorSettings->getBackgroundTexture());
 }
 
-void Widget::setIdleStyle()
+void Widget::changeState(const WidgetState state)
 {
-    // pure virtual
-}
-
-void Widget::setHoverStyle()
-{
-    // pure virtual
+    m_state = state;
+    refreshStyles();
 }
 
 void Widget::draw(sf::RenderTarget& target, sf::RenderStates states) const
@@ -324,74 +351,9 @@ void Widget::draw(sf::RenderTarget& target, sf::RenderStates states) const
     // pure virtual
 }
 
-TextBasedWidget::TextBasedWidget(const sf::Vector2f& position,
-                                 const sf::String& text,
-                                 const Style& style,
-                                 const std::function <void()> onButtonRelease) : Widget(position, style, onButtonRelease)
+TextBasedWidget::TextBasedWidget() : Widget()
 {
-    const auto& textSettings = m_style.getTextSettings();
-    const auto& colorSettings = m_style.getIdleColorSettings();
-
-    m_text.setString(text);
-    m_text.setFont(textSettings.getFont());
-    m_text.setCharacterSize(textSettings.getCharacterSize());
-    m_text.setFillColor(colorSettings.getTextColor());
-
-    m_text.setPosition(position.x + m_padding.x, position.y + m_padding.y);
-    m_rectangle.setSize(sf::Vector2f(m_text.getLocalBounds().left + m_text.getLocalBounds().width + 2 * m_padding.x,
-                                     style.getTextSettings().getFontMetrics().fullHeight + 2 * m_padding.y));
-}
-
-TextBasedWidget::TextBasedWidget(const sf::Vector2f& position,
-                                 const sf::Vector2f& size,
-                                 const sf::String& text,
-                                 const Style& style,
-                                 const std::function <void()> onButtonRelease) : Widget(position, style, onButtonRelease)
-{
-    const auto& textSettings = m_style.getTextSettings();
-    const auto& metrics = textSettings.getFontMetrics();
-    const auto& colorSettings = m_style.getIdleColorSettings();
-
-    m_text.setString(text);
-    m_text.setFont(textSettings.getFont());
-    m_text.setCharacterSize(textSettings.getCharacterSize());
-    m_text.setFillColor(colorSettings.getTextColor());
-
-    sf::Vector2f textPosition;
-
-    switch (textSettings.getHorizontalAlignment())
-    {
-        case TextHorizontalAlignment::Left:
-            textPosition.x = position.x + m_padding.x;
-            break;
-
-        case TextHorizontalAlignment::Center:
-            textPosition.x = position.x + (size.x - m_text.getLocalBounds().width) / 2.0f - m_text.getLocalBounds().left;
-            break;
-
-        case TextHorizontalAlignment::Right:
-            textPosition.x = position.x + size.x - m_padding.x - m_text.getLocalBounds().width;
-            break;
-    }
-
-    switch (textSettings.getVerticalAlignment())
-    {
-        case TextVerticalAlignment::Top:
-            textPosition.y = position.y + m_padding.y;
-            break;
-
-        case TextVerticalAlignment::Center:
-            textPosition.y = position.y + (size.y - metrics.baseLine) / 2.0f - metrics.ascenderLine;
-            break;
-
-        case TextVerticalAlignment::Bottom:
-            textPosition.y = position.y + size.y - m_padding.y - metrics.fullHeight;
-            break;
-    }
-
-    m_text.setPosition(textPosition);
-
-    m_rectangle.setSize(size);
+    //ctor
 }
 
 TextBasedWidget::~TextBasedWidget()
@@ -399,45 +361,159 @@ TextBasedWidget::~TextBasedWidget()
     //dtor
 }
 
-sf::String TextBasedWidget::getText() const
+void TextBasedWidget::setPosition(const sf::Vector2f& position)
 {
-    return m_text.getString();
+    Widget::setPosition(position);
+    placeText();
 }
 
-void TextBasedWidget::setPressedStyle()
+void TextBasedWidget::refreshStyles()
 {
-    const auto& style = m_style.getPressColorSettings();
+    const auto& textSettings = m_theme->getTextSettings();
 
-    m_rectangle.setFillColor(style.getFillColor());
-    m_rectangle.setOutlineThickness(style.getOutlineThickness());
-    m_rectangle.setOutlineColor(style.getOutlineColor());
-    m_rectangle.setTexture(style.getBackgroundTexture());
+    const ColorSettings* colorSettings;
+    switch (m_state)
+    {
+        case WidgetState::Idle:
+            colorSettings = &(m_theme->getIdleColorSettings());
+            break;
 
-    m_text.setFillColor(style.getTextColor());
+        case WidgetState::Hovered:
+            colorSettings = &(m_theme->getHoveredColorSettings());
+            break;
+
+        case WidgetState::Pressed:
+            colorSettings = &(m_theme->getPressedColorSettings());
+            break;
+    }
+
+    m_rectangle.setFillColor(colorSettings->getFillColor());
+    m_rectangle.setOutlineThickness(colorSettings->getOutlineThickness());
+    m_rectangle.setOutlineColor(colorSettings->getOutlineColor());
+    m_rectangle.setTexture(colorSettings->getBackgroundTexture());
+
+    for (auto& line : m_lines)
+    {
+        line.setFont(textSettings.getFont());
+        line.setCharacterSize(textSettings.getCharacterSize());
+        line.setFillColor(colorSettings->getTextColor());
+    }
+
+    placeText();
 }
 
-void TextBasedWidget::setIdleStyle()
+sf::String TextBasedWidget::getString(const sf::String separator) const
 {
-    const auto& style = m_style.getIdleColorSettings();
+    sf::String result;
 
-    m_rectangle.setFillColor(style.getFillColor());
-    m_rectangle.setOutlineThickness(style.getOutlineThickness());
-    m_rectangle.setOutlineColor(style.getOutlineColor());
-    m_rectangle.setTexture(style.getBackgroundTexture());
+    for (size_t i = 0; i < m_lines.size(); i++)
+    {
+        result += m_lines[i].getString();
+        if (i < m_lines.size() - 1)
+            result += separator;
+    }
 
-    m_text.setFillColor(style.getTextColor());
+    return result;
 }
 
-void TextBasedWidget::setHoverStyle()
+void TextBasedWidget::setString(const sf::String& text, const bool isMultiline)
 {
-    const auto& style = m_style.getHoverColorSettings();
+    m_lines.clear();
 
-    m_rectangle.setFillColor(style.getFillColor());
-    m_rectangle.setOutlineThickness(style.getOutlineThickness());
-    m_rectangle.setOutlineColor(style.getOutlineColor());
-    m_rectangle.setTexture(style.getBackgroundTexture());
+    if (isMultiline)
+        splitTextToLines(text);
+    else
+    {
+        m_lines.emplace_back();
+        m_lines.back().setString(text);
+    }
 
-    m_text.setFillColor(style.getTextColor());
+    placeText();
+    refreshStyles();
+}
+
+void TextBasedWidget::splitTextToLines(const sf::String& text)
+{
+    /*const auto maxWidth = m_rectangle.getSize().x - 2 * m_padding.x;
+    sf::String text = text.getString();
+
+    size_t wordStartPosition = 0;
+    sf::Text textLine = m_text;
+    sf::String line;
+
+    while (m_text.getLocalBounds().width > maxWidth)
+    {
+        auto wordEndPosition = text.find(L" ", wordStartPosition);
+
+        // It may happen that the word is too long to fit the widget
+        // And it happens. TODO: split long words
+        if (wordEndPosition == sf::String::InvalidPos)
+            break;
+
+        line += text.substring(wordStartPosition, wordEndPosition - wordStartPosition + 1);
+        textLine.setString(line);
+        std::cout << (std::string)line << '\n';
+
+        if (textLine.getLocalBounds().width > maxWidth)
+        {
+            m_lines.emplace_back();
+            m_lines.back().setString()
+
+            line.clear();
+        }
+        else
+            wordStartPosition = wordEndPosition + 1;
+    }*/
+}
+
+void TextBasedWidget::placeText()
+{
+    const auto position = m_rectangle.getPosition();
+    const auto size = m_rectangle.getSize();
+
+    const auto& textSettings = m_theme->getTextSettings();
+    const auto& metrics = textSettings.getFontMetrics();
+
+    for (auto& line : m_lines)
+    {
+        sf::Vector2f textPosition;
+
+        switch (textSettings.getHorizontalAlignment())
+        {
+            case TextHorizontalAlignment::Left:
+                textPosition.x = position.x + m_padding.x;
+                break;
+
+            case TextHorizontalAlignment::Center:
+                textPosition.x = position.x + (size.x - line.getLocalBounds().width) / 2.0f - line.getLocalBounds().left;
+                break;
+
+            case TextHorizontalAlignment::Right:
+                textPosition.x = position.x + size.x - m_padding.x - line.getLocalBounds().width;
+                break;
+        }
+
+        switch (textSettings.getVerticalAlignment())
+        {
+            case TextVerticalAlignment::Top:
+                textPosition.y = position.y + m_padding.y;
+                break;
+
+            case TextVerticalAlignment::Center:
+                textPosition.y = position.y + (size.y - metrics.baseLine) / 2.0f - metrics.ascenderLine;
+                break;
+
+            case TextVerticalAlignment::Bottom:
+                textPosition.y = position.y + size.y - m_padding.y - metrics.fullHeight;
+                break;
+        }
+
+        // If coordinates are not integer, the text gets blurred
+        textPosition.x = std::round(textPosition.x);
+        textPosition.y = std::round(textPosition.y);
+
+        line.setPosition(textPosition);
+    }
 }
 
 void TextBasedWidget::draw(sf::RenderTarget& target, sf::RenderStates states) const
@@ -455,28 +531,17 @@ void TextBasedWidget::draw(sf::RenderTarget& target, sf::RenderStates states) co
     sf::View view(bounds);
     view.setViewport(sf::FloatRect(bounds.left / size.x, bounds.top / size.y,
                                    bounds.width / size.x, bounds.height / size.y));
+
+    const auto oldView = target.getView();
     target.setView(view);
 
-    target.draw(m_text);
+    for (const auto& line : m_lines)
+        target.draw(line);
 
-    target.setView(target.getDefaultView());
+    target.setView(oldView);
 }
 
-PushButton::PushButton(const sf::Vector2f& position,
-                       const sf::Vector2f& size,
-                       const sf::String& text,
-                       const Style& style,
-                       std::function <void()> onButtonRelease) :
-    TextBasedWidget(position, size, text, style, onButtonRelease)
-{
-    //ctor
-}
-
-PushButton::PushButton(const sf::Vector2f& position,
-                       const sf::String& text,
-                       const Style& style,
-                       std::function <void()> onButtonRelease) :
-    TextBasedWidget(position, text, style, onButtonRelease)
+PushButton::PushButton()
 {
     //ctor
 }
