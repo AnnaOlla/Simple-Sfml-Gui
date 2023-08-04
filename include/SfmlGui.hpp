@@ -16,27 +16,37 @@ namespace SfGui
         Pressed
     };
 
-    class ColorSettings
+    class DecorationSettings
     {
         public:
-            ColorSettings(const sf::Color fillColor = sf::Color::White,
-                          const sf::Color textColor = sf::Color::Black,
-                          const float outlineThickness = 1.0f,
-                          const sf::Color outlineColor = sf::Color::Black,
-                          const sf::Texture* backgroundTexture = nullptr);
-            virtual ~ColorSettings();
+            DecorationSettings(const sf::Color fillColor = sf::Color::White,
+                               const sf::Color textColor = sf::Color::Black,
+                               const sf::Uint32 textStyle = sf::Text::Style::Regular,
+                               const float outlineThickness = 1.0f,
+                               const sf::Color outlineColor = sf::Color::Black,
+                               const sf::Texture* backgroundTexture = nullptr);
+            virtual ~DecorationSettings();
 
             sf::Color getFillColor() const;
             sf::Color getTextColor() const;
+            sf::Uint32 getTextStyle() const;
             sf::Color getOutlineColor() const;
             float getOutlineThickness() const;
             const sf::Texture* getBackgroundTexture() const;
 
+            void setFillColor(const sf::Color fillColor);
+            void setTextColor(const sf::Color textColor);
+            void setTextStyle(const sf::Uint32 textStyle);
+            void setOutlineThickness(const float outlineThickness);
+            void setOutlineColor(const sf::Color outlineColor);
+            void setBackgroundTexture(const sf::Texture* backgroundTexture);
+
         private:
-            const sf::Color m_fillColor;
-            const sf::Color m_textColor;
-            const float m_outlineThickness;
-            const sf::Color m_outlineColor;
+            sf::Color m_fillColor;
+            sf::Color m_textColor;
+            sf::Uint32 m_textStyle;
+            float m_outlineThickness;
+            sf::Color m_outlineColor;
             const sf::Texture* m_backgroundTexture;
     };
 
@@ -77,12 +87,17 @@ namespace SfGui
             TextVerticalAlignment getVerticalAlignment() const;
             const FontMetrics& getFontMetrics() const;
 
+            void setFont(const sf::Font& font);
+            void setCharacterSize(const unsigned int characterSize);
+            void setHorizontalAlignment(const TextHorizontalAlignment horizontalAlignment);
+            void setVerticalAlignment(const TextVerticalAlignment verticalAlignment);
+
         private:
-            const sf::Font& m_font;
-            const unsigned int m_characterSize;
-            const TextHorizontalAlignment m_horizontalAlignment;
-            const TextVerticalAlignment m_verticalAlignment;
-            const FontMetrics m_fontMetrics;
+            const sf::Font* m_font;
+            unsigned int m_characterSize;
+            TextHorizontalAlignment m_horizontalAlignment;
+            TextVerticalAlignment m_verticalAlignment;
+            FontMetrics m_fontMetrics;
 
             FontMetrics calculateFontMetrics();
     };
@@ -91,21 +106,21 @@ namespace SfGui
     {
         public:
             Theme(const TextSettings& text,
-                  const ColorSettings& idle,
-                  const ColorSettings& hover,
-                  const ColorSettings& press);
+                  const DecorationSettings& idle,
+                  const DecorationSettings& hover,
+                  const DecorationSettings& press);
             virtual ~Theme();
 
             const TextSettings& getTextSettings() const;
-            const ColorSettings& getIdleColorSettings() const;
-            const ColorSettings& getHoveredColorSettings() const;
-            const ColorSettings& getPressedColorSettings() const;
+            const DecorationSettings& getIdleColorSettings() const;
+            const DecorationSettings& getHoveredColorSettings() const;
+            const DecorationSettings& getPressedColorSettings() const;
 
         private:
             const TextSettings& m_textSettings;
-            const ColorSettings& m_idleColorSettings;
-            const ColorSettings& m_hoverColorSettings;
-            const ColorSettings& m_pressColorSettings;
+            const DecorationSettings& m_idleColorSettings;
+            const DecorationSettings& m_hoverColorSettings;
+            const DecorationSettings& m_pressColorSettings;
     };
 
     class Widget;
@@ -142,8 +157,6 @@ namespace SfGui
             Widget();
             virtual ~Widget();
 
-            virtual void refreshStyles();
-
             virtual void setPosition(const sf::Vector2f& position);
             virtual void setSize(const sf::Vector2f& size);
             void setTheme(const Theme& theme);
@@ -152,15 +165,20 @@ namespace SfGui
             sf::Vector2f getPosition() const;
             sf::Vector2f getSize() const;
             const Theme& getTheme() const;
+
             sf::FloatRect getLocalBounds() const;
             sf::FloatRect getGlobalBounds() const;
+            void forceStylesUpdate() const;
 
         protected:
-            sf::RectangleShape m_rectangle;
+            mutable sf::RectangleShape m_rectangle;
             const Theme* m_theme;
-            sf::Vector2f m_padding;
+            const sf::Vector2f m_padding;
             WidgetState m_state;
             std::function <void()> m_doActionOnClick;
+            mutable bool m_contentNeedsUpdate;
+
+            virtual void refreshStyles() const;
 
         private:
             void changeState(const WidgetState state);
@@ -176,18 +194,22 @@ namespace SfGui
             virtual ~TextBasedWidget();
 
             virtual void setPosition(const sf::Vector2f& position) override;
-            virtual void refreshStyles() override;
+            virtual void refreshStyles() const override;
 
-            sf::String getString(const sf::String separator = sf::String(L" ")) const;
-            void setString(const sf::String& text, const bool isMultiline = false);
+            sf::String getString() const;
+            bool getMultiline() const;
+            void setString(const sf::String& text);
+            void setMultiline(bool isMultiline);
 
         protected:
-            std::vector <sf::Text> m_lines;
+            mutable std::vector <sf::Text> m_lines;
+            sf::String m_string;
+            bool m_isMultiline;
 
         private:
             virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
-            void splitTextToLines(const sf::String& text);
-            void placeText();
+            void updateTextSplitting() const;
+            void placeText() const;
     };
 
     class PushButton : public TextBasedWidget

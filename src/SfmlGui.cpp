@@ -4,13 +4,15 @@
 namespace SfGui
 {
 
-ColorSettings::ColorSettings(const sf::Color fillColor,
-                             const sf::Color textColor,
-                             const float outlineThickness,
-                             const sf::Color outlineColor,
-                             const sf::Texture* backgroundTexture) :
+DecorationSettings::DecorationSettings(const sf::Color fillColor,
+                                       const sf::Color textColor,
+                                       const sf::Uint32 textStyle,
+                                       const float outlineThickness,
+                                       const sf::Color outlineColor,
+                                       const sf::Texture* backgroundTexture) :
     m_fillColor(fillColor),
     m_textColor(textColor),
+    m_textStyle(textStyle),
     m_outlineThickness(outlineThickness > 0 ? -outlineThickness : outlineThickness),
     m_outlineColor(outlineColor),
     m_backgroundTexture(backgroundTexture)
@@ -18,41 +20,76 @@ ColorSettings::ColorSettings(const sf::Color fillColor,
     //ctor
 }
 
-ColorSettings::~ColorSettings()
+DecorationSettings::~DecorationSettings()
 {
     //dtor
 }
 
-sf::Color ColorSettings::getFillColor() const
+sf::Color DecorationSettings::getFillColor() const
 {
     return m_fillColor;
 }
 
-sf::Color ColorSettings::getTextColor() const
+sf::Color DecorationSettings::getTextColor() const
 {
     return m_textColor;
 }
 
-sf::Color ColorSettings::getOutlineColor() const
+sf::Uint32 DecorationSettings::getTextStyle() const
+{
+    return m_textStyle;
+}
+
+sf::Color DecorationSettings::getOutlineColor() const
 {
     return m_outlineColor;
 }
 
-float ColorSettings::getOutlineThickness() const
+float DecorationSettings::getOutlineThickness() const
 {
     return m_outlineThickness;
 }
 
-const sf::Texture* ColorSettings::getBackgroundTexture() const
+const sf::Texture* DecorationSettings::getBackgroundTexture() const
 {
     return m_backgroundTexture;
+}
+
+void DecorationSettings::setFillColor(const sf::Color fillColor)
+{
+    m_fillColor = fillColor;
+}
+
+void DecorationSettings::setTextColor(const sf::Color textColor)
+{
+    m_textColor = textColor;
+}
+
+void DecorationSettings::setTextStyle(const sf::Uint32 textStyle)
+{
+    m_textStyle = textStyle;
+}
+
+void DecorationSettings::setOutlineThickness(const float outlineThickness)
+{
+    m_outlineThickness = outlineThickness > 0 ? -outlineThickness : outlineThickness;
+}
+
+void DecorationSettings::setOutlineColor(const sf::Color outlineColor)
+{
+    m_outlineColor = outlineColor;
+}
+
+void DecorationSettings::setBackgroundTexture(const sf::Texture* backgroundTexture)
+{
+    m_backgroundTexture = backgroundTexture;
 }
 
 TextSettings::TextSettings(const sf::Font& font,
                            const unsigned int characterSize,
                            const TextHorizontalAlignment horizontalAlignment,
                            const TextVerticalAlignment verticalAlignment) :
-    m_font(font),
+    m_font(&font),
     m_characterSize(characterSize),
     m_horizontalAlignment(horizontalAlignment),
     m_verticalAlignment(verticalAlignment),
@@ -68,7 +105,7 @@ TextSettings::~TextSettings()
 
 const sf::Font& TextSettings::getFont() const
 {
-    return m_font;
+    return *m_font;
 }
 
 unsigned int TextSettings::getCharacterSize() const
@@ -91,21 +128,47 @@ const FontMetrics& TextSettings::getFontMetrics() const
     return m_fontMetrics;
 }
 
+void TextSettings::setFont(const sf::Font& font)
+{
+    m_font = &font;
+    m_fontMetrics = calculateFontMetrics();
+}
+
+void TextSettings::setCharacterSize(const unsigned int characterSize)
+{
+    m_characterSize = characterSize;
+    m_fontMetrics = calculateFontMetrics();
+}
+
+void TextSettings::setHorizontalAlignment(const TextHorizontalAlignment horizontalAlignment)
+{
+    m_horizontalAlignment = horizontalAlignment;
+}
+
+void TextSettings::setVerticalAlignment(const TextVerticalAlignment verticalAlignment)
+{
+    m_verticalAlignment = verticalAlignment;
+}
+
 FontMetrics TextSettings::calculateFontMetrics()
 {
     FontMetrics metrics;
 
     sf::Text temp;
-    temp.setFont(m_font);
+    temp.setFont(*m_font);
     temp.setCharacterSize(m_characterSize);
 
     // Just some magic to apply vertical alignment correctly
     // (some fonts will have it a little incorrect)
 
+    // We calculate the highest line and the line which all letters stand on.
+    // We use "A" as the standard
     temp.setString(L"A");
     metrics.ascenderLine = temp.getLocalBounds().top;
     metrics.baseLine = temp.getLocalBounds().height;
 
+    // We calculate the lowest line of letters and, at last, maximum possible height
+    // We use "j" as the standard
     temp.setString(L"j");
     metrics.descenderLine = temp.getLocalBounds().height - metrics.baseLine;
     metrics.fullHeight = metrics.ascenderLine + metrics.baseLine + metrics.descenderLine;
@@ -114,9 +177,9 @@ FontMetrics TextSettings::calculateFontMetrics()
 }
 
 Theme::Theme(const TextSettings& textSettings,
-             const ColorSettings& idleColorSettings,
-             const ColorSettings& hoverColorSettings,
-             const ColorSettings& pressColorSettings) :
+             const DecorationSettings& idleColorSettings,
+             const DecorationSettings& hoverColorSettings,
+             const DecorationSettings& pressColorSettings) :
     m_textSettings(textSettings),
     m_idleColorSettings(idleColorSettings),
     m_hoverColorSettings(hoverColorSettings),
@@ -135,17 +198,17 @@ const TextSettings& Theme::getTextSettings() const
     return m_textSettings;
 }
 
-const ColorSettings& Theme::getIdleColorSettings() const
+const DecorationSettings& Theme::getIdleColorSettings() const
 {
     return m_idleColorSettings;
 }
 
-const ColorSettings& Theme::getHoveredColorSettings() const
+const DecorationSettings& Theme::getHoveredColorSettings() const
 {
     return m_hoverColorSettings;
 }
 
-const ColorSettings& Theme::getPressedColorSettings() const
+const DecorationSettings& Theme::getPressedColorSettings() const
 {
     return m_pressColorSettings;
 }
@@ -274,7 +337,7 @@ Widget* WidgetPool::getActiveWidget() const
     return it != std::reverse_iterator(m_widgets.cbegin()) ? *it : nullptr;
 }
 
-Widget::Widget() : m_theme(nullptr), m_padding(5.0f, 10.0f), m_state(WidgetState::Idle)
+Widget::Widget() : m_theme(nullptr), m_padding(5.0f, 10.0f), m_state(WidgetState::Idle), m_contentNeedsUpdate(true)
 {
     auto& ui = WidgetPool::getInstance();
     ui.addWidget(this);
@@ -288,17 +351,19 @@ Widget::~Widget()
 void Widget::setPosition(const sf::Vector2f& position)
 {
     m_rectangle.setPosition(position);
+    m_contentNeedsUpdate = true;
 }
 
 void Widget::setSize(const sf::Vector2f& size)
 {
     m_rectangle.setSize(size);
+    m_contentNeedsUpdate = true;
 }
 
 void Widget::setTheme(const Theme& theme)
 {
     m_theme = &theme;
-    refreshStyles();
+    m_contentNeedsUpdate = true;
 }
 
 void Widget::setAction(const std::function <void()> doActionOnButtonRelease)
@@ -316,9 +381,14 @@ sf::FloatRect Widget::getGlobalBounds() const
     return m_rectangle.getGlobalBounds();
 }
 
-void Widget::refreshStyles()
+void Widget::forceStylesUpdate() const
 {
-    const ColorSettings* colorSettings;
+    m_contentNeedsUpdate = true;
+}
+
+void Widget::refreshStyles() const
+{
+    const DecorationSettings* colorSettings;
     switch (m_state)
     {
         case WidgetState::Idle:
@@ -351,7 +421,7 @@ void Widget::draw(sf::RenderTarget& target, sf::RenderStates states) const
     // pure virtual
 }
 
-TextBasedWidget::TextBasedWidget() : Widget()
+TextBasedWidget::TextBasedWidget() : Widget(), m_isMultiline(false)
 {
     //ctor
 }
@@ -363,15 +433,15 @@ TextBasedWidget::~TextBasedWidget()
 
 void TextBasedWidget::setPosition(const sf::Vector2f& position)
 {
-    Widget::setPosition(position);
-    placeText();
+    m_rectangle.setPosition(position);
+    m_contentNeedsUpdate = true;
 }
 
-void TextBasedWidget::refreshStyles()
+void TextBasedWidget::refreshStyles() const
 {
     const auto& textSettings = m_theme->getTextSettings();
 
-    const ColorSettings* colorSettings;
+    const DecorationSettings* colorSettings;
     switch (m_state)
     {
         case WidgetState::Idle:
@@ -397,127 +467,155 @@ void TextBasedWidget::refreshStyles()
         line.setFont(textSettings.getFont());
         line.setCharacterSize(textSettings.getCharacterSize());
         line.setFillColor(colorSettings->getTextColor());
+        line.setStyle(colorSettings->getTextStyle());
     }
-
-    placeText();
 }
 
-sf::String TextBasedWidget::getString(const sf::String separator) const
+sf::String TextBasedWidget::getString() const
 {
-    sf::String result;
-
-    for (size_t i = 0; i < m_lines.size(); i++)
-    {
-        result += m_lines[i].getString();
-        if (i < m_lines.size() - 1)
-            result += separator;
-    }
-
-    return result;
+    return m_string;
 }
 
-void TextBasedWidget::setString(const sf::String& text, const bool isMultiline)
+bool TextBasedWidget::getMultiline() const
+{
+    return m_isMultiline;
+}
+
+void TextBasedWidget::setString(const sf::String& text)
+{
+    m_string = text;
+    m_contentNeedsUpdate = true;
+}
+
+void TextBasedWidget::setMultiline(bool isMultiline)
+{
+    m_isMultiline = isMultiline;
+    m_contentNeedsUpdate = true;
+}
+
+void TextBasedWidget::updateTextSplitting() const
 {
     m_lines.clear();
-
-    if (isMultiline)
-        splitTextToLines(text);
-    else
+    if (!m_isMultiline)
     {
         m_lines.emplace_back();
-        m_lines.back().setString(text);
+        m_lines.back().setString(m_string);
+        return;
     }
 
-    placeText();
-    refreshStyles();
-}
+    const auto maxWidth = m_rectangle.getSize().x - 2 * m_padding.x;
 
-void TextBasedWidget::splitTextToLines(const sf::String& text)
-{
-    /*const auto maxWidth = m_rectangle.getSize().x - 2 * m_padding.x;
-    sf::String text = text.getString();
+    const auto& textSettings = m_theme->getTextSettings();
+    sf::Text textLine;
+    textLine.setFont(textSettings.getFont());
+    textLine.setCharacterSize(textSettings.getCharacterSize());
 
     size_t wordStartPosition = 0;
-    sf::Text textLine = m_text;
+
     sf::String line;
 
-    while (m_text.getLocalBounds().width > maxWidth)
+    while (true)
     {
-        auto wordEndPosition = text.find(L" ", wordStartPosition);
+        auto wordEndPosition = m_string.find(L" ", wordStartPosition);
 
-        // It may happen that the word is too long to fit the widget
-        // And it happens. TODO: split long words
         if (wordEndPosition == sf::String::InvalidPos)
-            break;
+        {
+            line += m_string.substring(wordStartPosition);
+            textLine.setString(line);
 
-        line += text.substring(wordStartPosition, wordEndPosition - wordStartPosition + 1);
+            // TODO: split words that do not fit in the borders
+            // Notice: if the line has words before this, start a new line
+            /*while (textLine.getLocalBounds().width > maxWidth)
+            {
+
+            }*/
+
+            m_lines.emplace_back();
+            m_lines.back().setString(line);
+
+            return;
+        }
+
+        line += m_string.substring(wordStartPosition, wordEndPosition - wordStartPosition + 1);
         textLine.setString(line);
-        std::cout << (std::string)line << '\n';
+        //std::cout << (std::string)line << '\n';
 
         if (textLine.getLocalBounds().width > maxWidth)
         {
+            // Delete the last word and space before it
+            line = line.substring(0, line.getSize() - (wordEndPosition - wordStartPosition + 1) - 1);
             m_lines.emplace_back();
-            m_lines.back().setString()
-
+            m_lines.back().setString(line);
             line.clear();
         }
         else
             wordStartPosition = wordEndPosition + 1;
-    }*/
+    }
+    for (const auto& line : m_lines)
+        std::cout << '!' << (std::string)line.getString() << '!' << '\n';
 }
 
-void TextBasedWidget::placeText()
+void TextBasedWidget::placeText() const
 {
     const auto position = m_rectangle.getPosition();
     const auto size = m_rectangle.getSize();
 
     const auto& textSettings = m_theme->getTextSettings();
+    const auto horizontalAlignment = textSettings.getHorizontalAlignment();
+    const auto verticalAlignment = textSettings.getVerticalAlignment();
     const auto& metrics = textSettings.getFontMetrics();
 
-    for (auto& line : m_lines)
-    {
-        sf::Vector2f textPosition;
+    sf::Vector2f textPosition;
 
-        switch (textSettings.getHorizontalAlignment())
+    for (size_t i = 0; i < m_lines.size(); i++)
+    {
+        switch (horizontalAlignment)
         {
             case TextHorizontalAlignment::Left:
                 textPosition.x = position.x + m_padding.x;
                 break;
 
             case TextHorizontalAlignment::Center:
-                textPosition.x = position.x + (size.x - line.getLocalBounds().width) / 2.0f - line.getLocalBounds().left;
+                textPosition.x = position.x + (size.x - m_lines[i].getLocalBounds().width) / 2.0f - m_lines[i].getLocalBounds().left;
                 break;
 
             case TextHorizontalAlignment::Right:
-                textPosition.x = position.x + size.x - m_padding.x - line.getLocalBounds().width;
+                textPosition.x = position.x + size.x - m_padding.x - m_lines[i].getLocalBounds().width;
                 break;
         }
 
-        switch (textSettings.getVerticalAlignment())
+        switch (verticalAlignment)
         {
             case TextVerticalAlignment::Top:
-                textPosition.y = position.y + m_padding.y;
+                textPosition.y = position.y + m_padding.y + i * metrics.fullHeight;
                 break;
 
             case TextVerticalAlignment::Center:
-                textPosition.y = position.y + (size.y - metrics.baseLine) / 2.0f - metrics.ascenderLine;
+                textPosition.y = position.y + (size.y - m_lines.size() * metrics.fullHeight - metrics.ascenderLine) / 2.0f + i * metrics.fullHeight;
                 break;
 
             case TextVerticalAlignment::Bottom:
-                textPosition.y = position.y + size.y - m_padding.y - metrics.fullHeight;
+                textPosition.y = position.y + size.y - m_padding.y - (m_lines.size() - i) * metrics.fullHeight;
                 break;
         }
 
         // If coordinates are not integer, the text gets blurred
         textPosition.x = std::round(textPosition.x);
         textPosition.y = std::round(textPosition.y);
-
-        line.setPosition(textPosition);
+        m_lines[i].setPosition(textPosition);
     }
 }
 
 void TextBasedWidget::draw(sf::RenderTarget& target, sf::RenderStates states) const
 {
+    if (m_contentNeedsUpdate)
+    {
+        updateTextSplitting();
+        refreshStyles();
+        placeText();
+        m_contentNeedsUpdate = false;
+    }
+
     target.draw(m_rectangle);
 
     // Clip text
