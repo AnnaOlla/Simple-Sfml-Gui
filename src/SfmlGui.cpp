@@ -366,9 +366,35 @@ void Widget::setTheme(const Theme& theme)
     m_contentNeedsUpdate = true;
 }
 
+void Widget::setPadding(const sf::Vector2f& padding)
+{
+    m_padding = padding;
+    m_contentNeedsUpdate = true;
+}
+
 void Widget::setAction(const std::function <void()> doActionOnButtonRelease)
 {
     m_doActionOnClick = doActionOnButtonRelease;
+}
+
+sf::Vector2f Widget::getPosition() const
+{
+    return m_rectangle.getPosition();
+}
+
+sf::Vector2f Widget::getSize() const
+{
+    return m_rectangle.getSize();
+}
+
+const Theme& Widget::getTheme() const
+{
+    return *m_theme;
+}
+
+sf::Vector2f Widget::getPadding() const
+{
+    return m_padding;
 }
 
 sf::FloatRect Widget::getLocalBounds() const
@@ -533,12 +559,11 @@ void TextBasedWidget::updateTextSplitting() const
             m_lines.emplace_back();
             m_lines.back().setString(line);
 
-            return;
+            break;
         }
 
         line += m_string.substring(wordStartPosition, wordEndPosition - wordStartPosition + 1);
         textLine.setString(line);
-        //std::cout << (std::string)line << '\n';
 
         if (textLine.getLocalBounds().width > maxWidth)
         {
@@ -551,8 +576,6 @@ void TextBasedWidget::updateTextSplitting() const
         else
             wordStartPosition = wordEndPosition + 1;
     }
-    for (const auto& line : m_lines)
-        std::cout << '!' << (std::string)line.getString() << '!' << '\n';
 }
 
 void TextBasedWidget::placeText() const

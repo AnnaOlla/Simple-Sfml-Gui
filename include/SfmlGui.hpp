@@ -160,11 +160,13 @@ namespace SfGui
             virtual void setPosition(const sf::Vector2f& position);
             virtual void setSize(const sf::Vector2f& size);
             void setTheme(const Theme& theme);
+            void setPadding(const sf::Vector2f& padding);
             void setAction(const std::function <void()> doActionOnButtonRelease);
 
             sf::Vector2f getPosition() const;
             sf::Vector2f getSize() const;
             const Theme& getTheme() const;
+            sf::Vector2f getPadding() const;
 
             sf::FloatRect getLocalBounds() const;
             sf::FloatRect getGlobalBounds() const;
@@ -173,7 +175,8 @@ namespace SfGui
         protected:
             mutable sf::RectangleShape m_rectangle;
             const Theme* m_theme;
-            const sf::Vector2f m_padding;
+            sf::Vector2f m_padding;
+
             WidgetState m_state;
             std::function <void()> m_doActionOnClick;
             mutable bool m_contentNeedsUpdate;
