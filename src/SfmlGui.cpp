@@ -522,6 +522,7 @@ void TextBasedWidget::setMultiline(bool isMultiline)
 void TextBasedWidget::updateTextSplitting() const
 {
     m_lines.clear();
+
     if (!m_isMultiline)
     {
         m_lines.emplace_back();
@@ -536,45 +537,91 @@ void TextBasedWidget::updateTextSplitting() const
     textLine.setFont(textSettings.getFont());
     textLine.setCharacterSize(textSettings.getCharacterSize());
 
-    size_t wordStartPosition = 0;
+    std::vector <sf::String> words;
 
-    sf::String line;
-
-    while (true)
+    for (size_t beginPosition = 0, endPosition = 0; beginPosition < m_string.getSize();)
     {
-        auto wordEndPosition = m_string.find(L" ", wordStartPosition);
+        sf::String word;
+        endPosition = m_string.find(sf::String(L" "), beginPosition);
 
-        if (wordEndPosition == sf::String::InvalidPos)
+        if (endPosition == sf::String::InvalidPos)
         {
-            line += m_string.substring(wordStartPosition);
-            textLine.setString(line);
-
-            // TODO: split words that do not fit in the borders
-            // Notice: if the line has words before this, start a new line
-            /*while (textLine.getLocalBounds().width > maxWidth)
-            {
-
-            }*/
-
-            m_lines.emplace_back();
-            m_lines.back().setString(line);
-
-            break;
-        }
-
-        line += m_string.substring(wordStartPosition, wordEndPosition - wordStartPosition + 1);
-        textLine.setString(line);
-
-        if (textLine.getLocalBounds().width > maxWidth)
-        {
-            // Delete the last word and space before it
-            line = line.substring(0, line.getSize() - (wordEndPosition - wordStartPosition + 1) - 1);
-            m_lines.emplace_back();
-            m_lines.back().setString(line);
-            line.clear();
+            word = m_string.substring(beginPosition);
+            endPosition = m_string.getSize();
         }
         else
-            wordStartPosition = wordEndPosition + 1;
+            word = m_string.substring(beginPosition, endPosition - beginPosition);
+
+        // Split very long words that do not fit the rectangle at all
+        textLine.setString(word);
+
+        if (textLine.getLocalBounds().left + textLine.getLocalBounds().width > maxWidth)
+        {
+            word.clear();
+            textLine.setString(word);
+
+            for (; beginPosition < endPosition; beginPosition++)
+            {
+                word += m_string[beginPosition];
+                textLine.setString(word);
+
+                if (textLine.getLocalBounds().width > maxWidth)
+                {
+                    word.erase(word.getSize() - 1, 1);
+                    break;
+                }
+            }
+        }
+        else
+            beginPosition = endPosition + 1;
+
+        words.push_back(word);
+    }
+
+    sf::String line;
+    bool isLineReady = false;
+
+    for (size_t i = 0; i < words.size();)
+    {
+        if (line.getSize() != 0)
+            line += sf::String(L" ");
+        line += words[i];
+
+        textLine.setString(line);
+
+        if (textLine.getLocalBounds().left + textLine.getLocalBounds().width > maxWidth)
+        {
+            line = line.substring(0, line.getSize() - words[i].getSize());
+            isLineReady = true;
+        }
+        else if (i + 1 == words.size())
+        {
+            isLineReady = true;
+            i++;
+        }
+        else
+            i++;
+
+        if (isLineReady)
+        {
+            const auto spaceSymbol = sf::String(L" ")[0];
+
+            size_t trimLeft = 0;
+            for (; trimLeft < line.getSize() && line[trimLeft] == spaceSymbol; )
+                trimLeft++;
+            line = line.substring(trimLeft);
+
+            size_t trimRight = line.getSize() - 1;
+            for (size_t j = trimRight + 1; j > 0 && line[trimRight] == spaceSymbol; j--)
+                trimRight--;
+            line = line.substring(0, trimRight + 1);
+
+            m_lines.emplace_back();
+            m_lines.back().setString(line);
+
+            line.clear();
+            isLineReady = false;
+        }
     }
 }
 
@@ -618,7 +665,7 @@ void TextBasedWidget::placeText() const
                 break;
 
             case TextVerticalAlignment::Bottom:
-                textPosition.y = position.y + size.y - m_padding.y - (m_lines.size() - i) * metrics.fullHeight;
+                textPosition.y = position.y + size.y - m_padding.y - (m_lines.size() - i) * metrics.fullHeight - metrics.ascenderLine + metrics.descenderLine;
                 break;
         }
 
