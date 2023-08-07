@@ -155,18 +155,19 @@ namespace SfGui
 
         public:
             Widget();
-            virtual ~Widget();
+            virtual ~Widget() = 0;
 
             virtual void setPosition(const sf::Vector2f& position);
             virtual void setSize(const sf::Vector2f& size);
             void setTheme(const Theme& theme);
             void setPadding(const sf::Vector2f& padding);
-            void setAction(const std::function <void()> doActionOnButtonRelease);
+            void setBackgroundTextureRect(const sf::IntRect& rectangle);
 
             sf::Vector2f getPosition() const;
             sf::Vector2f getSize() const;
             const Theme& getTheme() const;
             sf::Vector2f getPadding() const;
+            sf::IntRect getBackgroundTextureRect() const;
 
             sf::FloatRect getLocalBounds() const;
             sf::FloatRect getGlobalBounds() const;
@@ -178,7 +179,6 @@ namespace SfGui
             sf::Vector2f m_padding;
 
             WidgetState m_state;
-            std::function <void()> m_doActionOnClick;
             mutable bool m_contentNeedsUpdate;
 
             virtual void refreshStyles() const;
@@ -194,7 +194,7 @@ namespace SfGui
     {
         public:
             TextBasedWidget();
-            virtual ~TextBasedWidget();
+            virtual ~TextBasedWidget() = 0;
 
             virtual void setPosition(const sf::Vector2f& position) override;
             virtual void refreshStyles() const override;
@@ -215,11 +215,45 @@ namespace SfGui
             void placeText() const;
     };
 
-    class PushButton : public TextBasedWidget
+    class Clickable
+    {
+        friend class WidgetPool;
+
+        public:
+            Clickable();
+            virtual ~Clickable() = 0;
+            void setAction(const std::function <void()> doActionOnButtonRelease);
+
+        private:
+            std::function <void()> m_doActionOnButtonRelease;
+    };
+
+    class PushButton : public TextBasedWidget, public Clickable
     {
         public:
             PushButton();
             virtual ~PushButton();
+    };
+
+    class IconButton : public Widget, public Clickable
+    {
+        public:
+            IconButton();
+            virtual ~IconButton();
+
+            virtual void setPosition(const sf::Vector2f& position) override;
+            virtual void setSize(const sf::Vector2f& size) override;
+            void setIconTexture(const sf::Texture& texture);
+            void setIconTextureRect(const sf::IntRect& rectangle);
+
+            const sf::Texture* getIconTexture() const;
+            sf::IntRect getIconTextureRect() const;
+
+        private:
+            mutable sf::Sprite m_icon;
+
+            void updateSpriteSize() const;
+            virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
     };
 }
 

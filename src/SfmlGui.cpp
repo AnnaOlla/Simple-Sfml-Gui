@@ -286,10 +286,20 @@ void WidgetPool::processEvent(const sf::Event event)
             if (m_lastClickedWidget == activeWidget)
             {
                 activeWidget->changeState(WidgetState::Hovered);
-                if (activeWidget->m_doActionOnClick != nullptr)
-                    activeWidget->m_doActionOnClick();
+
+                try
+                {
+                    auto clickable = dynamic_cast <Clickable*>(activeWidget);
+                    if (clickable->m_doActionOnButtonRelease != nullptr)
+                        clickable->m_doActionOnButtonRelease();
+                }
+                catch (const std::exception&)
+                {
+                    // If it is not clickable, do nothing
+                }
             }
 
+            m_lastClickedWidget = nullptr;
             m_lastHoveredWidget = activeWidget;
             break;
         }
@@ -372,9 +382,9 @@ void Widget::setPadding(const sf::Vector2f& padding)
     m_contentNeedsUpdate = true;
 }
 
-void Widget::setAction(const std::function <void()> doActionOnButtonRelease)
+void Widget::setBackgroundTextureRect(const sf::IntRect& rectangle)
 {
-    m_doActionOnClick = doActionOnButtonRelease;
+    m_rectangle.setTextureRect(rectangle);
 }
 
 sf::Vector2f Widget::getPosition() const
@@ -395,6 +405,11 @@ const Theme& Widget::getTheme() const
 sf::Vector2f Widget::getPadding() const
 {
     return m_padding;
+}
+
+sf::IntRect Widget::getBackgroundTextureRect() const
+{
+    return m_rectangle.getTextureRect();
 }
 
 sf::FloatRect Widget::getLocalBounds() const
@@ -709,7 +724,22 @@ void TextBasedWidget::draw(sf::RenderTarget& target, sf::RenderStates states) co
     target.setView(oldView);
 }
 
-PushButton::PushButton()
+Clickable::Clickable() : m_doActionOnButtonRelease(nullptr)
+{
+    //ctor
+}
+
+Clickable::~Clickable()
+{
+    //dtor
+}
+
+void Clickable::setAction(const std::function <void()> doActionOnButtonRelease)
+{
+    m_doActionOnButtonRelease = doActionOnButtonRelease;
+}
+
+PushButton::PushButton() : TextBasedWidget(), Clickable()
 {
     //ctor
 }
@@ -717,6 +747,75 @@ PushButton::PushButton()
 PushButton::~PushButton()
 {
     //dtor
+}
+
+IconButton::IconButton() : Widget(), Clickable()
+{
+    setPadding({0.0f, 0.0f});
+}
+
+IconButton::~IconButton()
+{
+    //dtor
+}
+
+void IconButton::setPosition(const sf::Vector2f& position)
+{
+    m_rectangle.setPosition(position);
+    m_icon.setPosition(position);
+    m_contentNeedsUpdate = true;
+}
+
+void IconButton::setSize(const sf::Vector2f& size)
+{
+    m_rectangle.setSize(size);
+
+    // Icon resize is delayed because we cannot ensure that the programmer use methods in the right order
+    m_contentNeedsUpdate = true;
+}
+
+void IconButton::setIconTexture(const sf::Texture& texture)
+{
+    m_icon.setTexture(texture);
+    m_contentNeedsUpdate = true;
+}
+
+void IconButton::setIconTextureRect(const sf::IntRect& rectangle)
+{
+    m_icon.setTextureRect(rectangle);
+    m_contentNeedsUpdate = true;
+}
+
+const sf::Texture* IconButton::getIconTexture() const
+{
+    return m_icon.getTexture();
+}
+
+sf::IntRect IconButton::getIconTextureRect() const
+{
+    return m_icon.getTextureRect();
+}
+
+void IconButton::updateSpriteSize() const
+{
+    const auto bounds = m_icon.getLocalBounds();
+    const auto size = m_rectangle.getSize();
+
+    sf::Vector2f factor;
+
+    factor.x = size.x / (bounds.width + bounds.left);
+    factor.y = size.y / (bounds.height + bounds.top);
+
+    m_icon.setScale(factor);
+}
+
+void IconButton::draw(sf::RenderTarget& target, sf::RenderStates states) const
+{
+    if (m_contentNeedsUpdate)
+        updateSpriteSize();
+
+    target.draw(m_rectangle);
+    target.draw(m_icon);
 }
 
 }
