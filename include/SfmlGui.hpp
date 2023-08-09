@@ -13,7 +13,8 @@ namespace SfGui
     {
         Idle,
         Hovered,
-        Pressed
+        Pressed,
+        Hidden
     };
 
     class DecorationSettings
@@ -125,7 +126,7 @@ namespace SfGui
 
     class Widget;
 
-    class WidgetPool
+    class WidgetPool : public sf::Drawable
     {
         friend class Widget;
 
@@ -147,6 +148,8 @@ namespace SfGui
             std::vector <Widget*> m_widgets;
             Widget* m_lastHoveredWidget;
             Widget* m_lastClickedWidget;
+
+            virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
     };
 
     class Widget : public sf::Drawable
@@ -162,6 +165,7 @@ namespace SfGui
             void setTheme(const Theme& theme);
             void setPadding(const sf::Vector2f& padding);
             void setBackgroundTextureRect(const sf::IntRect& rectangle);
+            void setAction(const std::function <void()> doActionOnButtonRelease);
 
             sf::Vector2f getPosition() const;
             sf::Vector2f getSize() const;
@@ -171,6 +175,10 @@ namespace SfGui
 
             sf::FloatRect getLocalBounds() const;
             sf::FloatRect getGlobalBounds() const;
+
+            void show();
+            void hide();
+            bool isHidden() const;
             void forceStylesUpdate() const;
 
         protected:
@@ -180,6 +188,8 @@ namespace SfGui
 
             WidgetState m_state;
             mutable bool m_contentNeedsUpdate;
+
+            std::function <void()> m_doActionOnButtonRelease;
 
             virtual void refreshStyles() const;
 
@@ -196,13 +206,14 @@ namespace SfGui
             TextBasedWidget();
             virtual ~TextBasedWidget() = 0;
 
+            void setSizeFitToText();
+            void setString(const sf::String& text);
+            void setMultiline(bool isMultiline);
             virtual void setPosition(const sf::Vector2f& position) override;
             virtual void refreshStyles() const override;
 
             sf::String getString() const;
             bool getMultiline() const;
-            void setString(const sf::String& text);
-            void setMultiline(bool isMultiline);
 
         protected:
             mutable std::vector <sf::Text> m_lines;
@@ -215,27 +226,14 @@ namespace SfGui
             void placeText() const;
     };
 
-    class Clickable
-    {
-        friend class WidgetPool;
-
-        public:
-            Clickable();
-            virtual ~Clickable() = 0;
-            void setAction(const std::function <void()> doActionOnButtonRelease);
-
-        private:
-            std::function <void()> m_doActionOnButtonRelease;
-    };
-
-    class PushButton : public TextBasedWidget, public Clickable
+    class PushButton : public TextBasedWidget
     {
         public:
             PushButton();
             virtual ~PushButton();
     };
 
-    class IconButton : public Widget, public Clickable
+    class IconButton : public Widget
     {
         public:
             IconButton();
@@ -254,6 +252,19 @@ namespace SfGui
 
             void updateSpriteSize() const;
             virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
+    };
+
+    class DropDownMenu : public TextBasedWidget
+    {
+        public:
+            DropDownMenu();
+            virtual ~DropDownMenu();
+
+            void addListItem(const sf::String& label, const std::function <void()> doAction);
+
+        private:
+            std::vector <PushButton> m_items;
+            void showItems();
     };
 }
 

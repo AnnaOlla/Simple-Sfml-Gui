@@ -287,16 +287,8 @@ void WidgetPool::processEvent(const sf::Event event)
             {
                 activeWidget->changeState(WidgetState::Hovered);
 
-                try
-                {
-                    auto clickable = dynamic_cast <Clickable*>(activeWidget);
-                    if (clickable->m_doActionOnButtonRelease != nullptr)
-                        clickable->m_doActionOnButtonRelease();
-                }
-                catch (const std::exception&)
-                {
-                    // If it is not clickable, do nothing
-                }
+                if (activeWidget->m_doActionOnButtonRelease != nullptr)
+                    activeWidget->m_doActionOnButtonRelease();
             }
 
             m_lastClickedWidget = nullptr;
@@ -339,12 +331,21 @@ void WidgetPool::processEvent(const sf::Event event)
 Widget* WidgetPool::getActiveWidget() const
 {
     auto position = m_window->mapPixelToCoords((sf::Mouse::getPosition(*m_window)));
-    auto isSelected = [&position](Widget* w) { return w->getGlobalBounds().contains(position); };
+    auto isSelected = [&position](Widget* w) { return !w->isHidden() && w->getGlobalBounds().contains(position); };
 
     // Widgets are drawn upon each other. The later we draw them, the bigger index they have
     // We need to select the top widget
     auto it = std::find_if(std::reverse_iterator(m_widgets.cend()), std::reverse_iterator(m_widgets.cbegin()), isSelected);
     return it != std::reverse_iterator(m_widgets.cbegin()) ? *it : nullptr;
+}
+
+void WidgetPool::draw(sf::RenderTarget& target, sf::RenderStates states) const
+{
+    for (const auto& widget : m_widgets)
+    {
+        if (!widget->isHidden())
+            target.draw(*widget);
+    }
 }
 
 Widget::Widget() : m_theme(nullptr), m_padding(5.0f, 10.0f), m_state(WidgetState::Idle), m_contentNeedsUpdate(true)
@@ -387,6 +388,11 @@ void Widget::setBackgroundTextureRect(const sf::IntRect& rectangle)
     m_rectangle.setTextureRect(rectangle);
 }
 
+void Widget::setAction(const std::function <void()> doActionOnButtonRelease)
+{
+    m_doActionOnButtonRelease = doActionOnButtonRelease;
+}
+
 sf::Vector2f Widget::getPosition() const
 {
     return m_rectangle.getPosition();
@@ -422,6 +428,21 @@ sf::FloatRect Widget::getGlobalBounds() const
     return m_rectangle.getGlobalBounds();
 }
 
+void Widget::show()
+{
+    m_state = WidgetState::Idle;
+}
+
+void Widget::hide()
+{
+    m_state = WidgetState::Hidden;
+}
+
+bool Widget::isHidden() const
+{
+    return m_state == WidgetState::Hidden;
+}
+
 void Widget::forceStylesUpdate() const
 {
     m_contentNeedsUpdate = true;
@@ -442,6 +463,9 @@ void Widget::refreshStyles() const
 
         case WidgetState::Pressed:
             colorSettings = &(m_theme->getPressedColorSettings());
+            break;
+
+        default:
             break;
     }
 
@@ -496,6 +520,9 @@ void TextBasedWidget::refreshStyles() const
         case WidgetState::Pressed:
             colorSettings = &(m_theme->getPressedColorSettings());
             break;
+
+        default:
+            break;
     }
 
     m_rectangle.setFillColor(colorSettings->getFillColor());
@@ -520,6 +547,30 @@ sf::String TextBasedWidget::getString() const
 bool TextBasedWidget::getMultiline() const
 {
     return m_isMultiline;
+}
+
+void TextBasedWidget::setSizeFitToText()
+{
+    updateTextSplitting();
+    refreshStyles();
+
+    float width = m_padding.x * 2;
+
+    const auto longestLine = std::max_element(m_lines.cbegin(), m_lines.cend(), [](const sf::Text& a, const sf::Text& b)
+    {
+        return (a.getLocalBounds().left + a.getLocalBounds().width) < (b.getLocalBounds().left + b.getLocalBounds().width);
+    });
+
+    if (longestLine != m_lines.cend())
+        width += (longestLine->getLocalBounds().left + longestLine->getLocalBounds().width);
+
+    float height = m_padding.y * 2;
+    height += m_theme->getTextSettings().getFontMetrics().fullHeight * m_lines.size();
+
+    setSize({ width, height });
+    placeText();
+
+    m_contentNeedsUpdate = false;
 }
 
 void TextBasedWidget::setString(const sf::String& text)
@@ -676,7 +727,7 @@ void TextBasedWidget::placeText() const
                 break;
 
             case TextVerticalAlignment::Center:
-                textPosition.y = position.y + (size.y - m_lines.size() * metrics.fullHeight - metrics.ascenderLine) / 2.0f + i * metrics.fullHeight;
+                textPosition.y = position.y + (size.y - m_lines.size() * metrics.fullHeight - metrics.ascenderLine + metrics.descenderLine) / 2.0f + i * metrics.fullHeight;
                 break;
 
             case TextVerticalAlignment::Bottom:
@@ -693,6 +744,9 @@ void TextBasedWidget::placeText() const
 
 void TextBasedWidget::draw(sf::RenderTarget& target, sf::RenderStates states) const
 {
+    if (m_state == WidgetState::Hidden)
+        return;
+
     if (m_contentNeedsUpdate)
     {
         updateTextSplitting();
@@ -724,22 +778,7 @@ void TextBasedWidget::draw(sf::RenderTarget& target, sf::RenderStates states) co
     target.setView(oldView);
 }
 
-Clickable::Clickable() : m_doActionOnButtonRelease(nullptr)
-{
-    //ctor
-}
-
-Clickable::~Clickable()
-{
-    //dtor
-}
-
-void Clickable::setAction(const std::function <void()> doActionOnButtonRelease)
-{
-    m_doActionOnButtonRelease = doActionOnButtonRelease;
-}
-
-PushButton::PushButton() : TextBasedWidget(), Clickable()
+PushButton::PushButton() : TextBasedWidget()
 {
     //ctor
 }
@@ -749,7 +788,7 @@ PushButton::~PushButton()
     //dtor
 }
 
-IconButton::IconButton() : Widget(), Clickable()
+IconButton::IconButton() : Widget()
 {
     setPadding({0.0f, 0.0f});
 }
@@ -811,11 +850,60 @@ void IconButton::updateSpriteSize() const
 
 void IconButton::draw(sf::RenderTarget& target, sf::RenderStates states) const
 {
+    if (m_state == WidgetState::Hidden)
+        return;
+
     if (m_contentNeedsUpdate)
         updateSpriteSize();
 
     target.draw(m_rectangle);
     target.draw(m_icon);
+}
+
+DropDownMenu::DropDownMenu() : TextBasedWidget()
+{
+    m_doActionOnButtonRelease = std::bind(&DropDownMenu::showItems, this);
+}
+
+DropDownMenu::~DropDownMenu()
+{
+    //dtor
+}
+
+void DropDownMenu::addListItem(const sf::String& label, const std::function <void()> doAction)
+{
+    const auto x = getPosition().x;
+    const auto y = (m_items.empty() ?
+                    getGlobalBounds().top + getGlobalBounds().height :
+                    m_items.back().getGlobalBounds().top + m_items.back().getGlobalBounds().height);
+
+    m_items.emplace_back();
+
+    m_items.back().setString(label);
+    m_items.back().setAction(doAction);
+    m_items.back().setTheme(*m_theme);
+    m_items.back().setPadding(m_padding);
+    m_items.back().setPosition({x, y});
+    m_items.back().setSizeFitToText();
+
+    const auto longestItem = max_element(m_items.cbegin(), m_items.cend(), [](const PushButton& a, const PushButton& b)
+    {
+        return a.getSize().x < b.getSize().x;
+    });
+
+    const auto width = longestItem->getSize().x;
+    const auto height = m_items.back().getSize().y;
+
+    for (auto& item : m_items)
+        item.setSize({width, height});
+
+    m_items.back().hide();
+}
+
+void DropDownMenu::showItems()
+{
+    for (auto& item : m_items)
+        item.show();
 }
 
 }
