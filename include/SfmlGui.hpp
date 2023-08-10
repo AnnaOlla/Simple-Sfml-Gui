@@ -4,6 +4,7 @@
 #include <SFML/Graphics.hpp>
 
 #include <vector>
+#include <list>
 #include <functional>
 #include <cmath>
 
@@ -149,6 +150,7 @@ namespace SfGui
             Widget* m_lastHoveredWidget;
             Widget* m_lastClickedWidget;
 
+            // Inherited from sf::Drawable
             virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
     };
 
@@ -263,7 +265,9 @@ namespace SfGui
             void addListItem(const sf::String& label, const std::function <void()> doAction);
 
         private:
-            std::vector <PushButton> m_items;
+            // Attention!
+            // If a list item moves in the memory somehow, widgetpool crashes the program because it keeps the outdated pointer
+            std::list <PushButton> m_items;
             void showItems();
     };
 }

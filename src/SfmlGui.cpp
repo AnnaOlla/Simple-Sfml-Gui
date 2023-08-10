@@ -333,7 +333,8 @@ Widget* WidgetPool::getActiveWidget() const
     auto position = m_window->mapPixelToCoords((sf::Mouse::getPosition(*m_window)));
     auto isSelected = [&position](Widget* w) { return !w->isHidden() && w->getGlobalBounds().contains(position); };
 
-    // Widgets are drawn upon each other. The later we draw them, the bigger index they have
+    // Widgets can be drawn upon each other (it should not be made by the user intentionally)
+    // Anyway, the later we draw them, the bigger index they have
     // We need to select the top widget
     auto it = std::find_if(std::reverse_iterator(m_widgets.cend()), std::reverse_iterator(m_widgets.cbegin()), isSelected);
     return it != std::reverse_iterator(m_widgets.cbegin()) ? *it : nullptr;
@@ -892,7 +893,7 @@ void DropDownMenu::addListItem(const sf::String& label, const std::function <voi
     });
 
     const auto width = longestItem->getSize().x;
-    const auto height = m_items.back().getSize().y;
+    const auto height = longestItem->getSize().y;
 
     for (auto& item : m_items)
         item.setSize({width, height});
