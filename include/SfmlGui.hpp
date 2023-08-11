@@ -257,11 +257,11 @@ namespace SfGui
             virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
     };
 
-    class DropDownMenu : public TextBasedWidget
+    class DropDownList : public TextBasedWidget
     {
         public:
-            DropDownMenu();
-            virtual ~DropDownMenu();
+            DropDownList();
+            virtual ~DropDownList();
 
             void addListItem(const sf::String& label, const std::function <void()> doAction);
 
@@ -269,6 +269,8 @@ namespace SfGui
             // Attention!
             // If a list item moves in the memory somehow, widgetpool crashes the program because it keeps the outdated pointer
             std::list <PushButton> m_items;
+            bool m_isOpened;
+
             void showItems();
             void hideItems();
             virtual void processEvent(const sf::Event event, const sf::Vector2f& mousePosition) override;

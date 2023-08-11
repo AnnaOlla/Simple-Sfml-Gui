@@ -248,19 +248,20 @@ void WidgetPool::processEvent(const sf::Event event)
     const auto position = m_window->mapPixelToCoords((sf::Mouse::getPosition(*m_window)));
     m_activeWidget = getActiveWidget(position);
 
+    // Process events
     if (m_activeWidget != nullptr)
         m_activeWidget->processEvent(event, position);
-
-    if (m_lastHoveredWidget != nullptr && m_lastHoveredWidget != m_activeWidget)
-        m_lastHoveredWidget->processEvent(event, position);
 
     if (m_lastClickedWidget != nullptr && m_lastClickedWidget != m_activeWidget)
         m_lastClickedWidget->processEvent(event, position);
 
-    m_lastHoveredWidget = m_activeWidget;
+    if (m_lastHoveredWidget != nullptr && m_lastHoveredWidget != m_activeWidget && m_lastHoveredWidget != m_lastClickedWidget)
+        m_lastHoveredWidget->processEvent(event, position);
 
     if (event.type == sf::Event::MouseButtonReleased)
         m_lastClickedWidget = m_activeWidget;
+
+    m_lastHoveredWidget = m_activeWidget;
 }
 
 Widget* WidgetPool::getActiveWidget(const sf::Vector2f& mousePosition) const
@@ -849,17 +850,17 @@ void IconButton::draw(sf::RenderTarget& target, sf::RenderStates states) const
     target.draw(m_icon);
 }
 
-DropDownMenu::DropDownMenu() : TextBasedWidget()
+DropDownList::DropDownList() : TextBasedWidget(), m_isOpened(false)
 {
     //ctor
 }
 
-DropDownMenu::~DropDownMenu()
+DropDownList::~DropDownList()
 {
     //dtor
 }
 
-void DropDownMenu::addListItem(const sf::String& label, const std::function <void()> doAction)
+void DropDownList::addListItem(const sf::String& label, const std::function <void()> doAction)
 {
     const auto x = getPosition().x;
     const auto y = (m_items.empty() ?
@@ -889,19 +890,21 @@ void DropDownMenu::addListItem(const sf::String& label, const std::function <voi
     m_items.back().hide();
 }
 
-void DropDownMenu::showItems()
+void DropDownList::showItems()
 {
     for (auto& item : m_items)
         item.show();
+    m_isOpened = true;
 }
 
-void DropDownMenu::hideItems()
+void DropDownList::hideItems()
 {
     for (auto& item : m_items)
         item.hide();
+    m_isOpened = false;
 }
 
-void DropDownMenu::processEvent(const sf::Event event, const sf::Vector2f& mousePosition)
+void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mousePosition)
 {
     if (m_state == WidgetState::Hidden)
         return;
@@ -913,7 +916,8 @@ void DropDownMenu::processEvent(const sf::Event event, const sf::Vector2f& mouse
         case sf::Event::MouseLeft:
         {
             changeState(WidgetState::Idle);
-            hideItems();
+            if (m_isOpened)
+                hideItems();
             break;
         }
 
@@ -921,9 +925,6 @@ void DropDownMenu::processEvent(const sf::Event event, const sf::Vector2f& mouse
         {
             if (isMouseInside && m_state != WidgetState::Pressed)
                 changeState(WidgetState::Pressed);
-            else
-                changeState(WidgetState::Idle);
-
             break;
         }
 
@@ -934,18 +935,22 @@ void DropDownMenu::processEvent(const sf::Event event, const sf::Vector2f& mouse
 
             if (isMouseInside)
             {
-                if (m_state != WidgetState::Pressed)
+                if (m_state == WidgetState::Pressed)
                 {
-                    changeState(WidgetState::Hovered);
-                    hideItems();
+                    if (m_isOpened)
+                    {
+                        changeState(WidgetState::Hovered);
+                        hideItems();
+                    }
+                    else
+                        showItems();
                 }
-                else
-                    showItems();
             }
             else
             {
                 changeState(WidgetState::Idle);
-                hideItems();
+                if (m_isOpened)
+                    hideItems();
             }
 
             break;
@@ -953,7 +958,6 @@ void DropDownMenu::processEvent(const sf::Event event, const sf::Vector2f& mouse
 
         case sf::Event::MouseMoved:
         {
-            // Prevent styles update on each frame
             if (m_state == WidgetState::Hovered)
             {
                 if (!isMouseInside)
@@ -963,6 +967,11 @@ void DropDownMenu::processEvent(const sf::Event event, const sf::Vector2f& mouse
             {
                 if (isMouseInside)
                     changeState(WidgetState::Hovered);
+            }
+            else if (m_state == WidgetState::Pressed)
+            {
+                if (!isMouseInside && !m_isOpened)
+                    changeState(WidgetState::Idle);
             }
 
             break;
