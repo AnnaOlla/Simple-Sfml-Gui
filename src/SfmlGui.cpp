@@ -213,7 +213,11 @@ const DecorationSettings& Theme::getPressedColorSettings() const
     return m_pressColorSettings;
 }
 
-WidgetPool::WidgetPool() : m_window(nullptr), m_lastHoveredWidget(nullptr), m_lastClickedWidget(nullptr)
+WidgetPool::WidgetPool() :
+    m_window(nullptr),
+    m_activeWidget(nullptr),
+    m_lastHoveredWidget(nullptr),
+    m_lastClickedWidget(nullptr)
 {
     //ctor
 }
@@ -241,97 +245,27 @@ void WidgetPool::addWidget(Widget* widget)
 
 void WidgetPool::processEvent(const sf::Event event)
 {
-    // Supported events;
-    if (event.type != sf::Event::MouseButtonPressed && event.type != sf::Event::MouseButtonReleased &&
-        event.type != sf::Event::MouseMoved && event.type != sf::Event::MouseLeft &&
-        sf::Mouse::isButtonPressed(sf::Mouse::Left))
-    {
-        return;
-    }
+    const auto position = m_window->mapPixelToCoords((sf::Mouse::getPosition(*m_window)));
+    m_activeWidget = getActiveWidget(position);
 
-    Widget* activeWidget = getActiveWidget();
+    if (m_activeWidget != nullptr)
+        m_activeWidget->processEvent(event, position);
 
-    switch (event.type)
-    {
-        case sf::Event::MouseLeft:
-        {
-            if (m_lastHoveredWidget != nullptr)
-            {
-                m_lastHoveredWidget->changeState(WidgetState::Idle);
-                m_lastHoveredWidget = nullptr;
-            }
+    if (m_lastHoveredWidget != nullptr && m_lastHoveredWidget != m_activeWidget)
+        m_lastHoveredWidget->processEvent(event, position);
 
-            break;
-        }
+    if (m_lastClickedWidget != nullptr && m_lastClickedWidget != m_activeWidget)
+        m_lastClickedWidget->processEvent(event, position);
 
-        case sf::Event::MouseButtonPressed:
-        {
-            if (activeWidget == nullptr)
-                break;
+    m_lastHoveredWidget = m_activeWidget;
 
-            activeWidget->changeState(WidgetState::Pressed);
-
-            m_lastHoveredWidget = activeWidget;
-            m_lastClickedWidget = activeWidget;
-            break;
-        }
-
-        case sf::Event::MouseButtonReleased:
-        {
-            if (activeWidget == nullptr)
-                break;
-
-            // Check whether focus had moved to other element before mouse was released
-            // We do not need to activate element that was not clicked
-            if (m_lastClickedWidget == activeWidget)
-            {
-                activeWidget->changeState(WidgetState::Hovered);
-
-                if (activeWidget->m_doActionOnButtonRelease != nullptr)
-                    activeWidget->m_doActionOnButtonRelease();
-            }
-
-            m_lastClickedWidget = nullptr;
-            m_lastHoveredWidget = activeWidget;
-            break;
-        }
-
-        case sf::Event::MouseMoved:
-        {
-            // Unfocus element
-            if (activeWidget == nullptr)
-            {
-                if (m_lastHoveredWidget != nullptr)
-                    m_lastHoveredWidget->changeState(WidgetState::Idle);
-            }
-
-            // Change focus
-            else if (m_lastHoveredWidget != nullptr)
-            {
-                if (m_lastHoveredWidget != activeWidget)
-                {
-                    m_lastHoveredWidget->changeState(WidgetState::Idle);
-                    activeWidget->changeState(WidgetState::Hovered);
-                }
-            }
-
-            // Set focus
-            else
-                activeWidget->changeState(WidgetState::Hovered);
-
-            m_lastHoveredWidget = activeWidget;
-            break;
-        }
-
-        default:
-            break;
-    }
+    if (event.type == sf::Event::MouseButtonReleased)
+        m_lastClickedWidget = m_activeWidget;
 }
 
-Widget* WidgetPool::getActiveWidget() const
+Widget* WidgetPool::getActiveWidget(const sf::Vector2f& mousePosition) const
 {
-    auto position = m_window->mapPixelToCoords((sf::Mouse::getPosition(*m_window)));
-    auto isSelected = [&position](Widget* w) { return !w->isHidden() && w->getGlobalBounds().contains(position); };
+    auto isSelected = [&mousePosition](Widget* w) { return !w->isHidden() && w->getGlobalBounds().contains(mousePosition); };
 
     // Widgets can be drawn upon each other (it should not be made by the user intentionally)
     // Anyway, the later we draw them, the bigger index they have
@@ -432,6 +366,7 @@ sf::FloatRect Widget::getGlobalBounds() const
 void Widget::show()
 {
     m_state = WidgetState::Idle;
+    m_contentNeedsUpdate = true;
 }
 
 void Widget::hide()
@@ -485,6 +420,59 @@ void Widget::changeState(const WidgetState state)
 void Widget::draw(sf::RenderTarget& target, sf::RenderStates states) const
 {
     // pure virtual
+}
+
+void Widget::processEvent(const sf::Event event, const sf::Vector2f& mousePosition)
+{
+    if (m_state == WidgetState::Hidden)
+        return;
+
+    if (!m_rectangle.getGlobalBounds().contains(mousePosition))
+    {
+        changeState(WidgetState::Idle);
+        return;
+    }
+
+    switch (event.type)
+    {
+        case sf::Event::MouseLeft:
+        {
+            changeState(WidgetState::Idle);
+            break;
+        }
+
+        case sf::Event::MouseButtonPressed:
+        {
+            changeState(WidgetState::Pressed);
+            break;
+        }
+
+        case sf::Event::MouseButtonReleased:
+        {
+            if (m_doActionOnButtonRelease != nullptr)
+                m_doActionOnButtonRelease();
+
+            changeState(WidgetState::Hovered);
+            break;
+        }
+
+        case sf::Event::MouseMoved:
+        {
+            // Prevent styles update on each frame
+            if (m_state == WidgetState::Hovered)
+                break;
+
+            // Prevent style change if the widget is not released
+            if (m_state == WidgetState::Pressed)
+                break;
+
+            changeState(WidgetState::Hovered);
+            break;
+        }
+
+        default:
+            break;
+    }
 }
 
 TextBasedWidget::TextBasedWidget() : Widget(), m_isMultiline(false)
@@ -863,7 +851,7 @@ void IconButton::draw(sf::RenderTarget& target, sf::RenderStates states) const
 
 DropDownMenu::DropDownMenu() : TextBasedWidget()
 {
-    m_doActionOnButtonRelease = std::bind(&DropDownMenu::showItems, this);
+    //ctor
 }
 
 DropDownMenu::~DropDownMenu()
@@ -907,4 +895,82 @@ void DropDownMenu::showItems()
         item.show();
 }
 
+void DropDownMenu::hideItems()
+{
+    for (auto& item : m_items)
+        item.hide();
 }
+
+void DropDownMenu::processEvent(const sf::Event event, const sf::Vector2f& mousePosition)
+{
+    if (m_state == WidgetState::Hidden)
+        return;
+
+    const auto isMouseInside = m_rectangle.getGlobalBounds().contains(mousePosition);
+
+    switch (event.type)
+    {
+        case sf::Event::MouseLeft:
+        {
+            changeState(WidgetState::Idle);
+            hideItems();
+            break;
+        }
+
+        case sf::Event::MouseButtonPressed:
+        {
+            if (isMouseInside && m_state != WidgetState::Pressed)
+                changeState(WidgetState::Pressed);
+            else
+                changeState(WidgetState::Idle);
+
+            break;
+        }
+
+        case sf::Event::MouseButtonReleased:
+        {
+            if (m_doActionOnButtonRelease != nullptr)
+                m_doActionOnButtonRelease();
+
+            if (isMouseInside)
+            {
+                if (m_state != WidgetState::Pressed)
+                {
+                    changeState(WidgetState::Hovered);
+                    hideItems();
+                }
+                else
+                    showItems();
+            }
+            else
+            {
+                changeState(WidgetState::Idle);
+                hideItems();
+            }
+
+            break;
+        }
+
+        case sf::Event::MouseMoved:
+        {
+            // Prevent styles update on each frame
+            if (m_state == WidgetState::Hovered)
+            {
+                if (!isMouseInside)
+                    changeState(WidgetState::Idle);
+            }
+            else if (m_state == WidgetState::Idle)
+            {
+                if (isMouseInside)
+                    changeState(WidgetState::Hovered);
+            }
+
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
+}   // namespace SfGui

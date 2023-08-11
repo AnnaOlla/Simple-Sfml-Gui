@@ -142,11 +142,12 @@ namespace SfGui
 
         private:
             WidgetPool();
-            Widget* getActiveWidget() const;
+            Widget* getActiveWidget(const sf::Vector2f& mousePosition) const;
             void addWidget(Widget* widget);
 
             const sf::RenderWindow* m_window;
             std::vector <Widget*> m_widgets;
+            Widget* m_activeWidget;
             Widget* m_lastHoveredWidget;
             Widget* m_lastClickedWidget;
 
@@ -194,12 +195,12 @@ namespace SfGui
             std::function <void()> m_doActionOnButtonRelease;
 
             virtual void refreshStyles() const;
-
-        private:
             void changeState(const WidgetState state);
 
+        private:
             // Inherited from sf::Drawable
             virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override = 0;
+            virtual void processEvent(const sf::Event event, const sf::Vector2f& mousePosition);
     };
 
     class TextBasedWidget : public Widget
@@ -269,6 +270,8 @@ namespace SfGui
             // If a list item moves in the memory somehow, widgetpool crashes the program because it keeps the outdated pointer
             std::list <PushButton> m_items;
             void showItems();
+            void hideItems();
+            virtual void processEvent(const sf::Event event, const sf::Vector2f& mousePosition) override;
     };
 }
 
