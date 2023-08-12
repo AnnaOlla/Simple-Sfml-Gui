@@ -275,6 +275,20 @@ namespace SfGui
             void hideItems();
             virtual void processEvent(const sf::Event event, const sf::Vector2f& mousePosition) override;
     };
+
+    class TextBox : public TextBasedWidget
+    {
+        public:
+            TextBox();
+            virtual ~TextBox();
+
+            size_t getMaxLength() const;
+            void setMaxLength(const size_t maxLength = sf::String::InvalidPos);
+
+        private:
+            size_t m_maxLength;
+            virtual void processEvent(const sf::Event event, const sf::Vector2f& mousePosition) override;
+    };
 }
 
 #endif // SFMLGUI_HPP

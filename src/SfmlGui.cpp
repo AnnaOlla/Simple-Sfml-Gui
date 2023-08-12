@@ -706,7 +706,7 @@ void TextBasedWidget::placeText() const
                 break;
 
             case TextHorizontalAlignment::Right:
-                textPosition.x = position.x + size.x - m_padding.x - m_lines[i].getLocalBounds().width;
+                textPosition.x = position.x + size.x - m_padding.x - m_lines[i].getLocalBounds().left - m_lines[i].getLocalBounds().width;
                 break;
         }
 
@@ -913,14 +913,6 @@ void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mouse
 
     switch (event.type)
     {
-        case sf::Event::MouseLeft:
-        {
-            changeState(WidgetState::Idle);
-            if (m_isOpened)
-                hideItems();
-            break;
-        }
-
         case sf::Event::MouseButtonPressed:
         {
             if (isMouseInside && m_state != WidgetState::Pressed)
@@ -974,6 +966,95 @@ void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mouse
                     changeState(WidgetState::Idle);
             }
 
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
+TextBox::TextBox() : TextBasedWidget(), m_maxLength(sf::String::InvalidPos)
+{
+    //ctor
+}
+
+TextBox::~TextBox()
+{
+    //dtor
+}
+
+size_t TextBox::getMaxLength() const
+{
+    return m_maxLength;
+}
+
+void TextBox::setMaxLength(const size_t maxLength)
+{
+    m_maxLength = maxLength;
+}
+
+void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosition)
+{
+    if (m_state == WidgetState::Hidden)
+        return;
+
+    const auto isMouseInside = m_rectangle.getGlobalBounds().contains(mousePosition);
+
+    switch (event.type)
+    {
+        case sf::Event::MouseButtonPressed:
+        {
+            if (isMouseInside && m_state != WidgetState::Pressed)
+                changeState(WidgetState::Pressed);
+            break;
+        }
+
+        case sf::Event::MouseButtonReleased:
+        {
+            if (m_doActionOnButtonRelease != nullptr)
+                m_doActionOnButtonRelease();
+
+            if (!isMouseInside)
+                changeState(WidgetState::Idle);
+
+            break;
+        }
+
+        case sf::Event::MouseMoved:
+        {
+            if (m_state == WidgetState::Hovered)
+            {
+                if (!isMouseInside)
+                    changeState(WidgetState::Idle);
+            }
+            else if (m_state == WidgetState::Idle)
+            {
+                if (isMouseInside)
+                    changeState(WidgetState::Hovered);
+            }
+
+            break;
+        }
+
+        case sf::Event::TextEntered:
+        {
+            if (m_state != WidgetState::Pressed)
+                break;
+
+            // Process backspace
+            if (event.text.unicode == '\b')
+            {
+                if (!m_string.isEmpty())
+                    m_string.erase(m_string.getSize() - 1);
+            }
+            else
+            {
+                if (m_string.getSize() < m_maxLength)
+                    m_string += event.text.unicode;
+            }
+
+            m_contentNeedsUpdate = true;
             break;
         }
 
