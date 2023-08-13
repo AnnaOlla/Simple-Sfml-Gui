@@ -1,7 +1,6 @@
-#include "SfmlGui.hpp"
-#include <iostream>
+#include "SmallSfmlGui.hpp"
 
-namespace SfGui
+namespace SmallGui
 {
 
 DecorationSettings::DecorationSettings(const sf::Color fillColor,
@@ -159,7 +158,7 @@ FontMetrics TextSettings::calculateFontMetrics()
     temp.setCharacterSize(m_characterSize);
 
     // Just some magic to apply vertical alignment correctly
-    // (some fonts will have it a little incorrect)
+    // (some fonts may have it a little incorrect)
 
     // We calculate the highest line and the line which all letters stand on.
     // We use "A" as the standard
@@ -387,29 +386,30 @@ void Widget::forceStylesUpdate() const
 
 void Widget::refreshStyles() const
 {
-    const DecorationSettings* colorSettings;
+    const DecorationSettings* decorationSettings = nullptr;
+
     switch (m_state)
     {
         case WidgetState::Idle:
-            colorSettings = &(m_theme->getIdleColorSettings());
+            decorationSettings = &(m_theme->getIdleColorSettings());
             break;
 
         case WidgetState::Hovered:
-            colorSettings = &(m_theme->getHoveredColorSettings());
+            decorationSettings = &(m_theme->getHoveredColorSettings());
             break;
 
         case WidgetState::Pressed:
-            colorSettings = &(m_theme->getPressedColorSettings());
+            decorationSettings = &(m_theme->getPressedColorSettings());
             break;
 
         default:
-            break;
+            return;
     }
 
-    m_rectangle.setFillColor(colorSettings->getFillColor());
-    m_rectangle.setOutlineThickness(colorSettings->getOutlineThickness());
-    m_rectangle.setOutlineColor(colorSettings->getOutlineColor());
-    m_rectangle.setTexture(colorSettings->getBackgroundTexture());
+    m_rectangle.setFillColor(decorationSettings->getFillColor());
+    m_rectangle.setOutlineThickness(decorationSettings->getOutlineThickness());
+    m_rectangle.setOutlineColor(decorationSettings->getOutlineColor());
+    m_rectangle.setTexture(decorationSettings->getBackgroundTexture());
 }
 
 void Widget::changeState(const WidgetState state)
@@ -444,12 +444,18 @@ void Widget::processEvent(const sf::Event event, const sf::Vector2f& mousePositi
 
         case sf::Event::MouseButtonPressed:
         {
+            if (event.mouseButton.button != sf::Mouse::Left)
+                break;
+
             changeState(WidgetState::Pressed);
             break;
         }
 
         case sf::Event::MouseButtonReleased:
         {
+            if (event.mouseButton.button != sf::Mouse::Left)
+                break;
+
             if (m_doActionOnButtonRelease != nullptr)
                 m_doActionOnButtonRelease();
 
@@ -495,38 +501,40 @@ void TextBasedWidget::setPosition(const sf::Vector2f& position)
 void TextBasedWidget::refreshStyles() const
 {
     const auto& textSettings = m_theme->getTextSettings();
+    const DecorationSettings* decorationSettings = nullptr;
 
-    const DecorationSettings* colorSettings;
     switch (m_state)
     {
         case WidgetState::Idle:
-            colorSettings = &(m_theme->getIdleColorSettings());
+            decorationSettings = &(m_theme->getIdleColorSettings());
             break;
 
         case WidgetState::Hovered:
-            colorSettings = &(m_theme->getHoveredColorSettings());
+            decorationSettings = &(m_theme->getHoveredColorSettings());
             break;
 
         case WidgetState::Pressed:
-            colorSettings = &(m_theme->getPressedColorSettings());
+            decorationSettings = &(m_theme->getPressedColorSettings());
             break;
 
         default:
-            break;
+            return;
     }
 
-    m_rectangle.setFillColor(colorSettings->getFillColor());
-    m_rectangle.setOutlineThickness(colorSettings->getOutlineThickness());
-    m_rectangle.setOutlineColor(colorSettings->getOutlineColor());
-    m_rectangle.setTexture(colorSettings->getBackgroundTexture());
+    m_rectangle.setFillColor(decorationSettings->getFillColor());
+    m_rectangle.setOutlineThickness(decorationSettings->getOutlineThickness());
+    m_rectangle.setOutlineColor(decorationSettings->getOutlineColor());
+    m_rectangle.setTexture(decorationSettings->getBackgroundTexture());
 
     for (auto& line : m_lines)
     {
         line.setFont(textSettings.getFont());
         line.setCharacterSize(textSettings.getCharacterSize());
-        line.setFillColor(colorSettings->getTextColor());
-        line.setStyle(colorSettings->getTextStyle());
+        line.setFillColor(decorationSettings->getTextColor());
+        line.setStyle(decorationSettings->getTextStyle());
     }
+
+    m_contentNeedsUpdate = true;
 }
 
 sf::String TextBasedWidget::getString() const
@@ -534,7 +542,7 @@ sf::String TextBasedWidget::getString() const
     return m_string;
 }
 
-bool TextBasedWidget::getMultiline() const
+bool TextBasedWidget::isMultiline() const
 {
     return m_isMultiline;
 }
@@ -569,7 +577,7 @@ void TextBasedWidget::setString(const sf::String& text)
     m_contentNeedsUpdate = true;
 }
 
-void TextBasedWidget::setMultiline(bool isMultiline)
+void TextBasedWidget::setMultilined(bool isMultiline)
 {
     m_isMultiline = isMultiline;
     m_contentNeedsUpdate = true;
@@ -915,6 +923,9 @@ void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mouse
     {
         case sf::Event::MouseButtonPressed:
         {
+            if (event.mouseButton.button != sf::Mouse::Left)
+                break;
+
             if (isMouseInside && m_state != WidgetState::Pressed)
                 changeState(WidgetState::Pressed);
             break;
@@ -922,6 +933,9 @@ void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mouse
 
         case sf::Event::MouseButtonReleased:
         {
+            if (event.mouseButton.button != sf::Mouse::Left)
+                break;
+
             if (m_doActionOnButtonRelease != nullptr)
                 m_doActionOnButtonRelease();
 
@@ -974,7 +988,7 @@ void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mouse
     }
 }
 
-TextBox::TextBox() : TextBasedWidget(), m_maxLength(sf::String::InvalidPos)
+TextBox::TextBox() : TextBasedWidget(), m_maxInputLength(sf::String::InvalidPos)
 {
     //ctor
 }
@@ -984,14 +998,14 @@ TextBox::~TextBox()
     //dtor
 }
 
-size_t TextBox::getMaxLength() const
+size_t TextBox::getMaxInputLength() const
 {
-    return m_maxLength;
+    return m_maxInputLength;
 }
 
-void TextBox::setMaxLength(const size_t maxLength)
+void TextBox::setMaxInputLength(const size_t maxInputLength)
 {
-    m_maxLength = maxLength;
+    m_maxInputLength = maxInputLength;
 }
 
 void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosition)
@@ -1005,6 +1019,9 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
     {
         case sf::Event::MouseButtonPressed:
         {
+            if (event.mouseButton.button != sf::Mouse::Left)
+                break;
+
             if (isMouseInside && m_state != WidgetState::Pressed)
                 changeState(WidgetState::Pressed);
             break;
@@ -1012,6 +1029,9 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
 
         case sf::Event::MouseButtonReleased:
         {
+            if (event.mouseButton.button != sf::Mouse::Left)
+                break;
+
             if (m_doActionOnButtonRelease != nullptr)
                 m_doActionOnButtonRelease();
 
@@ -1048,9 +1068,11 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
                 if (!m_string.isEmpty())
                     m_string.erase(m_string.getSize() - 1);
             }
-            else
+
+            // Skip other control keys
+            else if (event.text.unicode >= 0x32)
             {
-                if (m_string.getSize() < m_maxLength)
+                if (m_string.getSize() < m_maxInputLength)
                     m_string += event.text.unicode;
             }
 
@@ -1063,4 +1085,124 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
     }
 }
 
-}   // namespace SfGui
+CheckBox::CheckBox() : TextBasedWidget(), m_isChecked(false)
+{
+    // Set the default checkmark
+    m_string = L"X";
+}
+
+CheckBox::~CheckBox()
+{
+    //dtor
+}
+
+bool CheckBox::isChecked() const
+{
+    return m_isChecked;
+}
+
+void CheckBox::setChecked(const bool isChecked)
+{
+    m_isChecked = isChecked;
+}
+
+void CheckBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosition)
+{
+    if (m_state == WidgetState::Hidden)
+        return;
+
+    const auto isMouseInside = m_rectangle.getGlobalBounds().contains(mousePosition);
+
+    switch (event.type)
+    {
+        case sf::Event::MouseButtonPressed:
+        {
+            if (isMouseInside && m_state != WidgetState::Pressed)
+            {
+                changeState(WidgetState::Pressed);
+                m_contentNeedsUpdate = true;
+            }
+
+            break;
+        }
+
+        case sf::Event::MouseButtonReleased:
+        {
+            if (m_doActionOnButtonRelease != nullptr)
+                m_doActionOnButtonRelease();
+
+            if (isMouseInside)
+            {
+                if (m_state == WidgetState::Pressed)
+                    changeState(WidgetState::Hovered);
+
+                m_isChecked = !m_isChecked;
+                m_contentNeedsUpdate = true;
+            }
+            else
+                changeState(WidgetState::Idle);
+
+            break;
+        }
+
+        case sf::Event::MouseMoved:
+        {
+            if (m_state == WidgetState::Hovered)
+            {
+                if (!isMouseInside)
+                    changeState(WidgetState::Idle);
+            }
+            else if (m_state == WidgetState::Idle)
+            {
+                if (isMouseInside)
+                    changeState(WidgetState::Hovered);
+            }
+
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
+void CheckBox::draw(sf::RenderTarget& target, sf::RenderStates states) const
+{
+    if (m_state == WidgetState::Hidden)
+        return;
+
+    if (m_contentNeedsUpdate)
+    {
+        updateTextSplitting();
+        refreshStyles();
+        placeText();
+        m_contentNeedsUpdate = false;
+    }
+
+    target.draw(m_rectangle);
+
+    if (!m_isChecked)
+        return;
+
+    // Clip text
+    auto bounds = m_rectangle.getGlobalBounds();
+    bounds.left += m_padding.x;
+    bounds.top += m_padding.y;
+    bounds.width -= m_padding.x * 2;
+    bounds.height -= m_padding.y * 2;
+
+    const auto size = target.mapPixelToCoords(static_cast <sf::Vector2i>(target.getSize()));
+    sf::View view(bounds);
+    view.setViewport(sf::FloatRect(bounds.left / size.x, bounds.top / size.y,
+                                   bounds.width / size.x, bounds.height / size.y));
+
+    const auto oldView = target.getView();
+    target.setView(view);
+
+    for (const auto& line : m_lines)
+        target.draw(line);
+
+    target.setView(oldView);
+}
+
+}   // namespace SmallGui
