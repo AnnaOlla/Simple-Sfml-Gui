@@ -283,7 +283,7 @@ void WidgetPool::draw(sf::RenderTarget& target, sf::RenderStates states) const
     }
 }
 
-Widget::Widget() : m_theme(nullptr), m_padding(5.0f, 10.0f), m_state(WidgetState::Idle), m_contentNeedsUpdate(true)
+Widget::Widget() : m_theme(nullptr), m_state(WidgetState::Idle), m_contentNeedsUpdate(true)
 {
     auto& ui = WidgetPool::getInstance();
     ui.addWidget(this);
@@ -312,12 +312,6 @@ void Widget::setTheme(const Theme& theme)
     m_contentNeedsUpdate = true;
 }
 
-void Widget::setPadding(const sf::Vector2f& padding)
-{
-    m_padding = padding;
-    m_contentNeedsUpdate = true;
-}
-
 void Widget::setBackgroundTextureRect(const sf::IntRect& rectangle)
 {
     m_rectangle.setTextureRect(rectangle);
@@ -341,11 +335,6 @@ sf::Vector2f Widget::getSize() const
 const Theme& Widget::getTheme() const
 {
     return *m_theme;
-}
-
-sf::Vector2f Widget::getPadding() const
-{
-    return m_padding;
 }
 
 sf::IntRect Widget::getBackgroundTextureRect() const
@@ -482,7 +471,7 @@ void Widget::processEvent(const sf::Event event, const sf::Vector2f& mousePositi
     }
 }
 
-TextBasedWidget::TextBasedWidget() : Widget(), m_isMultiline(false)
+TextBasedWidget::TextBasedWidget() : Widget(), m_padding(5.0f, 10.0f), m_isMultiline(false)
 {
     //ctor
 }
@@ -490,6 +479,48 @@ TextBasedWidget::TextBasedWidget() : Widget(), m_isMultiline(false)
 TextBasedWidget::~TextBasedWidget()
 {
     //dtor
+}
+
+void TextBasedWidget::setSizeFitToText()
+{
+    updateTextSplitting();
+    refreshStyles();
+
+    float width = m_padding.x * 2;
+
+    const auto longestLine = std::max_element(m_lines.cbegin(), m_lines.cend(), [](const sf::Text& a, const sf::Text& b)
+    {
+        return (a.getLocalBounds().left + a.getLocalBounds().width) < (b.getLocalBounds().left + b.getLocalBounds().width);
+    });
+
+    if (longestLine != m_lines.cend())
+        width += (longestLine->getLocalBounds().left + longestLine->getLocalBounds().width);
+
+    float height = m_padding.y * 2;
+    height += m_theme->getTextSettings().getFontMetrics().fullHeight * m_lines.size();
+
+    setSize({ width, height });
+    placeText();
+
+    m_contentNeedsUpdate = false;
+}
+
+void TextBasedWidget::setString(const sf::String& text)
+{
+    m_string = text;
+    m_contentNeedsUpdate = true;
+}
+
+void TextBasedWidget::setPadding(const sf::Vector2f& padding)
+{
+    m_padding = padding;
+    m_contentNeedsUpdate = true;
+}
+
+void TextBasedWidget::setMultilined(bool isMultiline)
+{
+    m_isMultiline = isMultiline;
+    m_contentNeedsUpdate = true;
 }
 
 void TextBasedWidget::setPosition(const sf::Vector2f& position)
@@ -545,42 +576,6 @@ sf::String TextBasedWidget::getString() const
 bool TextBasedWidget::isMultiline() const
 {
     return m_isMultiline;
-}
-
-void TextBasedWidget::setSizeFitToText()
-{
-    updateTextSplitting();
-    refreshStyles();
-
-    float width = m_padding.x * 2;
-
-    const auto longestLine = std::max_element(m_lines.cbegin(), m_lines.cend(), [](const sf::Text& a, const sf::Text& b)
-    {
-        return (a.getLocalBounds().left + a.getLocalBounds().width) < (b.getLocalBounds().left + b.getLocalBounds().width);
-    });
-
-    if (longestLine != m_lines.cend())
-        width += (longestLine->getLocalBounds().left + longestLine->getLocalBounds().width);
-
-    float height = m_padding.y * 2;
-    height += m_theme->getTextSettings().getFontMetrics().fullHeight * m_lines.size();
-
-    setSize({ width, height });
-    placeText();
-
-    m_contentNeedsUpdate = false;
-}
-
-void TextBasedWidget::setString(const sf::String& text)
-{
-    m_string = text;
-    m_contentNeedsUpdate = true;
-}
-
-void TextBasedWidget::setMultilined(bool isMultiline)
-{
-    m_isMultiline = isMultiline;
-    m_contentNeedsUpdate = true;
 }
 
 void TextBasedWidget::updateTextSplitting() const
@@ -788,7 +783,7 @@ PushButton::~PushButton()
 
 IconButton::IconButton() : Widget()
 {
-    setPadding({0.0f, 0.0f});
+    //ctor
 }
 
 IconButton::~IconButton()
@@ -1070,7 +1065,7 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
             }
 
             // Skip other control keys
-            else if (event.text.unicode >= 0x32)
+            else if (event.text.unicode >= 32)
             {
                 if (m_string.getSize() < m_maxInputLength)
                     m_string += event.text.unicode;

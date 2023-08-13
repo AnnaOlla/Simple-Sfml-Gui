@@ -494,14 +494,6 @@ namespace SmallGui
             void setTheme(const Theme& theme);
 
             /////////////////////////////////////////////////
-            /// \brief Changes padding (borders inside the widget)
-            ///
-            /// \param padding: new padding of the widget
-            ///
-            /////////////////////////////////////////////////
-            void setPadding(const sf::Vector2f& padding);
-
-            /////////////////////////////////////////////////
             /// \brief Changes background texture rectangle
             ///
             /// \param rectangle: new rectangle for the texture
@@ -540,14 +532,6 @@ namespace SmallGui
             ///
             /////////////////////////////////////////////////
             const Theme& getTheme() const;
-
-            /////////////////////////////////////////////////
-            /// \brief Gets the current padding of the widget
-            ///
-            /// \return Current padding of the widget
-            ///
-            /////////////////////////////////////////////////
-            sf::Vector2f getPadding() const;
 
             /////////////////////////////////////////////////
             /// \brief Gets the current texture rectangle of the widget
@@ -598,7 +582,6 @@ namespace SmallGui
             /////////////////////////////////////////////////
             mutable sf::RectangleShape m_rectangle;             //!< Rectangle that represents background and borders
             const Theme* m_theme;                               //!< Pointer to the theme using which the widget is stylized
-            sf::Vector2f m_padding;                             //!< Padding for the content
             WidgetState m_state;                                //!< Current state of the widget
             mutable bool m_contentNeedsUpdate;                  //!< Does the content need to be updated?
             std::function <void()> m_doActionOnButtonRelease;   //!< Function to be called on the left mouse button release
@@ -674,6 +657,14 @@ namespace SmallGui
             void setString(const sf::String& text);
 
             /////////////////////////////////////////////////
+            /// \brief Changes padding (borders inside the widget)
+            ///
+            /// \param padding: new padding of the widget
+            ///
+            /////////////////////////////////////////////////
+            void setPadding(const sf::Vector2f& padding);
+
+            /////////////////////////////////////////////////
             /// \brief Allows the widget to split text in several lines, or forces to keep all the string in one line
             ///
             /// \param isMultiline: should the text be drawn in multiple lines?
@@ -704,6 +695,14 @@ namespace SmallGui
             sf::String getString() const;
 
             /////////////////////////////////////////////////
+            /// \brief Gets the current padding of the widget
+            ///
+            /// \return Current padding of the widget
+            ///
+            /////////////////////////////////////////////////
+            sf::Vector2f getPadding() const;
+
+            /////////////////////////////////////////////////
             /// \brief Gets the flag allowing the text to be split to multiple lines
             ///
             /// \return 'true' if the text is allowed to be split to multiple lines, else 'false'
@@ -717,6 +716,7 @@ namespace SmallGui
             /////////////////////////////////////////////////
             mutable std::vector <sf::Text> m_lines;     //!< Lines of the text to be drawn
             sf::String m_string;                        //!< The whole text put in the widget
+            sf::Vector2f m_padding;                     //!< Padding for the content
             bool m_isMultiline;                         //!< Is the text allowed to be split in multiple lines?
 
             /////////////////////////////////////////////////
