@@ -874,7 +874,7 @@ void DropDownList::addListItem(const sf::String& label, const std::function <voi
 
     m_items.back().setString(label);
     m_items.back().setAction(doAction);
-    m_items.back().setTheme(*m_theme);
+    m_items.back().setTheme(*m_itemsTheme);
     m_items.back().setPadding(m_padding);
     m_items.back().setPosition({x, y});
     m_items.back().setSizeFitToText();
@@ -907,6 +907,13 @@ void DropDownList::hideItems()
     m_isOpened = false;
 }
 
+void DropDownList::setItemsTheme(const Theme& theme)
+{
+    m_itemsTheme = &theme;
+    for (auto& item : m_items)
+        item.setTheme(theme);
+}
+
 void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mousePosition)
 {
     if (m_state == WidgetState::Hidden)
@@ -916,6 +923,13 @@ void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mouse
 
     switch (event.type)
     {
+        case sf::Event::MouseLeft:
+        {
+            if (m_state != WidgetState::Pressed)
+                changeState(WidgetState::Idle);
+            break;
+        }
+
         case sf::Event::MouseButtonPressed:
         {
             if (event.mouseButton.button != sf::Mouse::Left)
@@ -1012,6 +1026,13 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
 
     switch (event.type)
     {
+        case sf::Event::MouseLeft:
+        {
+            if (m_state != WidgetState::Pressed)
+                changeState(WidgetState::Idle);
+            break;
+        }
+
         case sf::Event::MouseButtonPressed:
         {
             if (event.mouseButton.button != sf::Mouse::Left)
@@ -1110,6 +1131,13 @@ void CheckBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosi
 
     switch (event.type)
     {
+        case sf::Event::MouseLeft:
+        {
+            if (m_state != WidgetState::Pressed)
+                changeState(WidgetState::Idle);
+            break;
+        }
+
         case sf::Event::MouseButtonPressed:
         {
             if (isMouseInside && m_state != WidgetState::Pressed)

@@ -873,11 +873,20 @@ namespace SmallGui
             /////////////////////////////////////////////////
             void addListItem(const sf::String& label, const std::function <void()> doAction);
 
+            /////////////////////////////////////////////////
+            /// \brief Sets the specified theme for all list items
+            ///
+            /// \param theme: a theme for items
+            ///
+            /////////////////////////////////////////////////
+            void setItemsTheme(const Theme& theme);
+
         private:
             /////////////////////////////////////////////////
             /// Member data
             /////////////////////////////////////////////////
             std::list <PushButton> m_items;     //!< List of items. May cause the program crash if some magic moves the item in the memory: WidgetPool will have an outdated pointer
+            const Theme* m_itemsTheme;          //!< A theme for all items to apply automatically
             bool m_isOpened;                    //!< Are the items shown?
 
             /////////////////////////////////////////////////
