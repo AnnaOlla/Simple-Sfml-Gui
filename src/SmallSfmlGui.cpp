@@ -624,7 +624,7 @@ void TextBasedWidget::updateTextSplitting() const
                 word += m_string[beginPosition];
                 textLine.setString(word);
 
-                if (textLine.getLocalBounds().width > maxWidth)
+                if (textLine.getLocalBounds().left + textLine.getLocalBounds().width > maxWidth)
                 {
                     word.erase(word.getSize() - 1, 1);
                     break;
