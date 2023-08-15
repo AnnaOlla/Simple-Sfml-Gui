@@ -36,6 +36,18 @@ namespace SmallGui
                                const sf::Texture* backgroundTexture = nullptr);
 
             /////////////////////////////////////////////////
+            /// \brief Disabled for dynamic arrays because settings are used through pointers that become outdated after moving the object
+            ///
+            /////////////////////////////////////////////////
+            DecorationSettings(DecorationSettings const&) = delete;
+
+            /////////////////////////////////////////////////
+            /// \brief Disabled for dynamic arrays because settings are used through pointers that become outdated after moving the object
+            ///
+            /////////////////////////////////////////////////
+            void operator=(DecorationSettings const&) = delete;
+
+            /////////////////////////////////////////////////
             /// \brief Default destructor
             ///
             /////////////////////////////////////////////////
@@ -205,6 +217,18 @@ namespace SmallGui
                          const unsigned int characterSize = 30,
                          const TextHorizontalAlignment horizontalAlignment = TextHorizontalAlignment::Center,
                          const TextVerticalAlignment verticalAlignment = TextVerticalAlignment::Center);
+
+            /////////////////////////////////////////////////
+            /// \brief Disabled for dynamic arrays because settings are used through pointers that become outdated after moving the object
+            ///
+            /////////////////////////////////////////////////
+            TextSettings(TextSettings const&) = delete;
+
+            /////////////////////////////////////////////////
+            /// \brief Disabled for dynamic arrays because settings are used through pointers that become outdated after moving the object
+            ///
+            /////////////////////////////////////////////////
+            void operator=(TextSettings const&) = delete;
 
             /////////////////////////////////////////////////
             /// \brief Default destructor
@@ -1017,6 +1041,36 @@ namespace SmallGui
             ///
             /////////////////////////////////////////////////
             virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
+    };
+
+    /////////////////////////////////////////////////
+    /// \brief A gui element that allows to set a tick or unset it. The checkmark can be any string or symbol that the font allows
+    ///
+    /////////////////////////////////////////////////
+    class StaticText : public TextBasedWidget
+    {
+        public:
+            /////////////////////////////////////////////////
+            /// \brief Default constructor to create an empty object
+            ///
+            /////////////////////////////////////////////////
+            StaticText();
+
+            /////////////////////////////////////////////////
+            /// \brief Default destructor
+            ///
+            /////////////////////////////////////////////////
+            virtual ~StaticText();
+
+        private:
+            /////////////////////////////////////////////////
+            /// \brief Processes the event sent by the instance of WidgetPool. Changes styles and controls behavior
+            ///
+            /// \param event: event caught by the window
+            /// \param mousePosition: current mouse position in the world coordinates
+            ///
+            /////////////////////////////////////////////////
+            virtual void processEvent(const sf::Event event, const sf::Vector2f& mousePosition) override;
     };
 }   // namespace SmallGui
 

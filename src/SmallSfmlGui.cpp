@@ -1228,4 +1228,20 @@ void CheckBox::draw(sf::RenderTarget& target, sf::RenderStates states) const
     target.setView(oldView);
 }
 
+StaticText::StaticText() : TextBasedWidget()
+{
+    //ctor
+}
+
+StaticText::~StaticText()
+{
+    //dtor
+}
+
+void StaticText::processEvent(const sf::Event event, const sf::Vector2f& mousePosition)
+{
+    // Static text does nothing
+    return;
+}
+
 }   // namespace SmallGui
