@@ -847,7 +847,10 @@ void IconButton::draw(sf::RenderTarget& target, sf::RenderStates states) const
         return;
 
     if (m_contentNeedsUpdate)
+    {
+        refreshStyles();
         updateSpriteSize();
+    }
 
     target.draw(m_rectangle);
     target.draw(m_icon);
