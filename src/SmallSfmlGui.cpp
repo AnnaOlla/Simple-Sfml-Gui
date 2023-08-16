@@ -263,6 +263,12 @@ void WidgetPool::processEvent(const sf::Event event)
     m_lastHoveredWidget = m_activeWidget;
 }
 
+void WidgetPool::forceThemeUpdate() const
+{
+    for (const auto& widget : m_widgets)
+        widget->refreshStyles();
+}
+
 Widget* WidgetPool::getActiveWidget(const sf::Vector2f& mousePosition) const
 {
     auto isSelected = [&mousePosition](Widget* w) { return !w->isHidden() && w->getGlobalBounds().contains(mousePosition); };
@@ -368,7 +374,7 @@ bool Widget::isHidden() const
     return m_state == WidgetState::Hidden;
 }
 
-void Widget::forceStylesUpdate() const
+void Widget::forceThemeUpdate() const
 {
     m_contentNeedsUpdate = true;
 }

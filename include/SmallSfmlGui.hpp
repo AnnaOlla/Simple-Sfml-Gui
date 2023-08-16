@@ -417,7 +417,7 @@ namespace SmallGui
             /// \brief Forces appearance of all widgets to be updated on the current frame. Must be used if any style is changed
             ///
             /////////////////////////////////////////////////
-            void forceStylesUpdate() const;
+            void forceThemeUpdate() const;
 
         private:
             /////////////////////////////////////////////////
@@ -629,7 +629,7 @@ namespace SmallGui
             /// \brief Forces appearance to be updated on the current frame. Should be used if the style is changed
             ///
             /////////////////////////////////////////////////
-            void forceStylesUpdate() const;
+            void forceThemeUpdate() const;
 
             /////////////////////////////////////////////////
             /// \brief Draws the widget on the window. Inherited from sf::Drawable
