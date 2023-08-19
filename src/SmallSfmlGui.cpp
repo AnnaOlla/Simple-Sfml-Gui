@@ -266,7 +266,7 @@ void WidgetPool::processEvent(const sf::Event event)
 void WidgetPool::forceThemeUpdate() const
 {
     for (const auto& widget : m_widgets)
-        widget->refreshStyles();
+        widget->refreshTheme();
 }
 
 Widget* WidgetPool::getActiveWidget(const sf::Vector2f& mousePosition) const
@@ -379,7 +379,7 @@ void Widget::forceThemeUpdate() const
     m_contentNeedsUpdate = true;
 }
 
-void Widget::refreshStyles() const
+void Widget::refreshTheme() const
 {
     const DecorationSettings* decorationSettings = nullptr;
 
@@ -410,7 +410,7 @@ void Widget::refreshStyles() const
 void Widget::changeState(const WidgetState state)
 {
     m_state = state;
-    refreshStyles();
+    refreshTheme();
 }
 
 void Widget::draw(sf::RenderTarget& target, sf::RenderStates states) const
@@ -477,7 +477,9 @@ void Widget::processEvent(const sf::Event event, const sf::Vector2f& mousePositi
     }
 }
 
-TextBasedWidget::TextBasedWidget() : Widget(), m_padding(5.0f, 10.0f), m_isMultiline(false)
+const sf::String TextBasedWidget::m_wordSeparators = L" \n\t";
+
+TextBasedWidget::TextBasedWidget() : Widget(), m_padding(5.0f, 10.0f), m_isMultiline(false), m_isTrimmable(true)
 {
     //ctor
 }
@@ -490,7 +492,7 @@ TextBasedWidget::~TextBasedWidget()
 void TextBasedWidget::setSizeFitToText()
 {
     updateTextSplitting();
-    refreshStyles();
+    refreshTheme();
 
     float width = m_padding.x * 2;
 
@@ -535,7 +537,7 @@ void TextBasedWidget::setPosition(const sf::Vector2f& position)
     m_contentNeedsUpdate = true;
 }
 
-void TextBasedWidget::refreshStyles() const
+void TextBasedWidget::refreshTheme() const
 {
     const auto& textSettings = m_theme->getTextSettings();
     const DecorationSettings* decorationSettings = nullptr;
@@ -584,14 +586,60 @@ bool TextBasedWidget::isMultiline() const
     return m_isMultiline;
 }
 
+size_t TextBasedWidget::findFirstWordSeparatorPosition(size_t begin) const
+{
+    for (; begin < m_string.getSize(); begin++)
+    {
+        for (size_t i = 0; i < m_wordSeparators.getSize(); i++)
+        {
+            if (m_string[begin] == m_wordSeparators[i])
+                return begin;
+        }
+    }
+
+    return sf::String::InvalidPos;
+}
+
+sf::String TextBasedWidget::trimLine(const sf::String& line) const
+{
+    auto result = line;
+
+    // Trim the left
+    for (size_t trimLeft = 0; trimLeft < result.getSize(); trimLeft++)
+    {
+        if (std::find(m_wordSeparators.begin(), m_wordSeparators.end(), result[trimLeft]) == m_wordSeparators.end())
+        {
+            result = result.substring(trimLeft);
+            break;
+        }
+    }
+
+    // Trim the right
+    for (size_t trimRightPlusOne = result.getSize(); trimRightPlusOne > 0; trimRightPlusOne--)
+    {
+        size_t trimRight = trimRightPlusOne - 1;
+
+        if (std::find(m_wordSeparators.begin(), m_wordSeparators.end(), result[trimRight]) == m_wordSeparators.end())
+        {
+            result = result.substring(0, trimRight + 1);
+            break;
+        }
+    }
+
+    return result;
+}
+
 void TextBasedWidget::updateTextSplitting() const
 {
     m_lines.clear();
 
     if (!m_isMultiline)
     {
+        const auto line = (m_isTrimmable ? trimLine(m_string) : m_string);
+
         m_lines.emplace_back();
-        m_lines.back().setString(m_string);
+        m_lines.back().setString(line);
+
         return;
     }
 
@@ -603,11 +651,12 @@ void TextBasedWidget::updateTextSplitting() const
     textLine.setCharacterSize(textSettings.getCharacterSize());
 
     std::vector <sf::String> words;
+    std::vector <sf::Uint32> separators;
 
     for (size_t beginPosition = 0, endPosition = 0; beginPosition < m_string.getSize();)
     {
         sf::String word;
-        endPosition = m_string.find(sf::String(L" "), beginPosition);
+        endPosition = findFirstWordSeparatorPosition(beginPosition);
 
         if (endPosition == sf::String::InvalidPos)
         {
@@ -615,7 +664,10 @@ void TextBasedWidget::updateTextSplitting() const
             endPosition = m_string.getSize();
         }
         else
+        {
             word = m_string.substring(beginPosition, endPosition - beginPosition);
+            separators.push_back(m_string[endPosition]);
+        }
 
         // Split very long words that do not fit the rectangle at all
         textLine.setString(word);
@@ -636,6 +688,8 @@ void TextBasedWidget::updateTextSplitting() const
                     break;
                 }
             }
+
+            separators.push_back('\n');
         }
         else
             beginPosition = endPosition + 1;
@@ -648,10 +702,7 @@ void TextBasedWidget::updateTextSplitting() const
 
     for (size_t i = 0; i < words.size();)
     {
-        if (line.getSize() != 0)
-            line += sf::String(L" ");
         line += words[i];
-
         textLine.setString(line);
 
         if (textLine.getLocalBounds().left + textLine.getLocalBounds().width > maxWidth)
@@ -661,25 +712,26 @@ void TextBasedWidget::updateTextSplitting() const
         }
         else if (i + 1 == words.size())
         {
+            if (i < separators.size() && separators[i] != '\n')
+                line += sf::String(separators[i]);
+
             isLineReady = true;
             i++;
         }
         else
+        {
+            if (separators[i] == '\n')
+                isLineReady = true;
+            else
+                line += sf::String(separators[i]);
+
             i++;
+        }
 
         if (isLineReady)
         {
-            const auto spaceSymbol = sf::String(L" ")[0];
-
-            size_t trimLeft = 0;
-            for (; trimLeft < line.getSize() && line[trimLeft] == spaceSymbol; )
-                trimLeft++;
-            line = line.substring(trimLeft);
-
-            size_t trimRight = line.getSize() - 1;
-            for (size_t j = trimRight + 1; j > 0 && line[trimRight] == spaceSymbol; j--)
-                trimRight--;
-            line = line.substring(0, trimRight + 1);
+            if (m_isTrimmable)
+                line = trimLine(line);
 
             m_lines.emplace_back();
             m_lines.back().setString(line);
@@ -749,7 +801,7 @@ void TextBasedWidget::draw(sf::RenderTarget& target, sf::RenderStates states) co
     if (m_contentNeedsUpdate)
     {
         updateTextSplitting();
-        refreshStyles();
+        refreshTheme();
         placeText();
         m_contentNeedsUpdate = false;
     }
@@ -854,7 +906,7 @@ void IconButton::draw(sf::RenderTarget& target, sf::RenderStates states) const
 
     if (m_contentNeedsUpdate)
     {
-        refreshStyles();
+        refreshTheme();
         updateSpriteSize();
     }
 
@@ -1008,7 +1060,7 @@ void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mouse
 
 TextBox::TextBox() : TextBasedWidget(), m_maxInputLength(sf::String::InvalidPos)
 {
-    //ctor
+    m_isTrimmable = false;
 }
 
 TextBox::~TextBox()
@@ -1093,12 +1145,12 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
                 if (!m_string.isEmpty())
                     m_string.erase(m_string.getSize() - 1);
             }
-
-            // Skip other control keys
-            else if (event.text.unicode >= 32)
+            else if (m_string.getSize() < m_maxInputLength)
             {
-                if (m_string.getSize() < m_maxInputLength)
+                if (event.text.unicode != '\r')
                     m_string += event.text.unicode;
+                else
+                    m_string += '\n';
             }
 
             m_contentNeedsUpdate = true;
@@ -1206,7 +1258,7 @@ void CheckBox::draw(sf::RenderTarget& target, sf::RenderStates states) const
     if (m_contentNeedsUpdate)
     {
         updateTextSplitting();
-        refreshStyles();
+        refreshTheme();
         placeText();
         m_contentNeedsUpdate = false;
     }

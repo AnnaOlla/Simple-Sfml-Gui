@@ -7,6 +7,7 @@
 #include <list>
 #include <functional>
 #include <cmath>
+#include <iostream>
 
 namespace SmallGui
 {
@@ -611,13 +612,13 @@ namespace SmallGui
             std::function <void()> m_doActionOnButtonRelease;   //!< Function to be called on the left mouse button release
 
             /////////////////////////////////////////////////
-            /// \brief Changes styles when the state changes
+            /// \brief Updates theme when the state changes
             ///
             /////////////////////////////////////////////////
-            virtual void refreshStyles() const;
+            virtual void refreshTheme() const;
 
             /////////////////////////////////////////////////
-            /// \brief Changes state and calls refreshStyles()
+            /// \brief Changes state and calls refreshTheme()
             ///
             /// \param state: new state of the widget
             ///
@@ -708,7 +709,7 @@ namespace SmallGui
             /// \brief Changes styles when the state changes
             ///
             /////////////////////////////////////////////////
-            virtual void refreshStyles() const override;
+            virtual void refreshTheme() const override;
 
             /////////////////////////////////////////////////
             /// \brief Gets the string kept inside the widget
@@ -742,6 +743,7 @@ namespace SmallGui
             sf::String m_string;                        //!< The whole text put in the widget
             sf::Vector2f m_padding;                     //!< Padding for the content
             bool m_isMultiline;                         //!< Is the text allowed to be split in multiple lines?
+            bool m_isTrimmable;                         //!< Should word separators be deleted from the ends and beginnings?
 
             /////////////////////////////////////////////////
             /// \brief Converts 'm_string' to 'm_lines' by pushing to one or splitting to several lines
@@ -761,6 +763,27 @@ namespace SmallGui
             ///
             /////////////////////////////////////////////////
             virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
+
+            /////////////////////////////////////////////////
+            /// \brief Finds position of the first separator between words
+            ///
+            /// \param begin: position where the search starts from
+            ///
+            /////////////////////////////////////////////////
+            size_t findFirstWordSeparatorPosition(size_t begin) const;
+
+            /////////////////////////////////////////////////
+            /// \brief Deletes all word separators from the beginning and ends of strings
+            ///
+            /// \param line: a line to trim
+            ///
+            /////////////////////////////////////////////////
+            sf::String trimLine(const sf::String& line) const;
+
+            /////////////////////////////////////////////////
+            /// Member data
+            /////////////////////////////////////////////////
+            static const sf::String m_wordSeparators;   //!< A string containing separators between words to split them
     };
 
     /////////////////////////////////////////////////
