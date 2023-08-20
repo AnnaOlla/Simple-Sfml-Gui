@@ -7,7 +7,6 @@
 #include <list>
 #include <functional>
 #include <cmath>
-#include <iostream>
 
 namespace SmallGui
 {
@@ -608,7 +607,7 @@ namespace SmallGui
             mutable sf::RectangleShape m_rectangle;             //!< Rectangle that represents background and borders
             const Theme* m_theme;                               //!< Pointer to the theme using which the widget is stylized
             WidgetState m_state;                                //!< Current state of the widget
-            mutable bool m_contentNeedsUpdate;                  //!< Does the content need to be updated?
+            mutable bool m_contentNeedsUpdate;                    //!< Does the theme need to be updated?
             std::function <void()> m_doActionOnButtonRelease;   //!< Function to be called on the left mouse button release
 
             /////////////////////////////////////////////////
@@ -618,12 +617,24 @@ namespace SmallGui
             virtual void refreshTheme() const;
 
             /////////////////////////////////////////////////
+            /// \brief Updates theme of the rectangle when the state changes
+            ///
+            /////////////////////////////////////////////////
+            void refreshRectangleTheme() const;
+
+            /////////////////////////////////////////////////
             /// \brief Changes state and calls refreshTheme()
             ///
             /// \param state: new state of the widget
             ///
             /////////////////////////////////////////////////
             void changeState(const WidgetState state);
+
+            /////////////////////////////////////////////////
+            /// \brief Draws the rectangle (does not update theme) Used only inside draw() method
+            ///
+            /////////////////////////////////////////////////
+            void drawRectangle(sf::RenderTarget& target, sf::RenderStates states) const;
 
         private:
             /////////////////////////////////////////////////
@@ -636,7 +647,7 @@ namespace SmallGui
             /// \brief Draws the widget on the window. Inherited from sf::Drawable
             ///
             /////////////////////////////////////////////////
-            virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override = 0;
+            virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
 
             /////////////////////////////////////////////////
             /// \brief Processes the event sent by the instance of WidgetPool. Changes styles and controls behavior
@@ -668,7 +679,7 @@ namespace SmallGui
             virtual ~TextBasedWidget() = 0;
 
             /////////////////////////////////////////////////
-            /// \brief Calculates the size of the widget based on the text. Requires the string and the style to be called before
+            /// \brief Calculates the size of the widget based on the text. Updates splitting and theme before resizing
             ///
             /////////////////////////////////////////////////
             void setSizeFitToText();
@@ -704,12 +715,6 @@ namespace SmallGui
             ///
             /////////////////////////////////////////////////
             virtual void setPosition(const sf::Vector2f& position) override;
-
-            /////////////////////////////////////////////////
-            /// \brief Changes styles when the state changes
-            ///
-            /////////////////////////////////////////////////
-            virtual void refreshTheme() const override;
 
             /////////////////////////////////////////////////
             /// \brief Gets the string kept inside the widget
@@ -756,6 +761,24 @@ namespace SmallGui
             ///
             /////////////////////////////////////////////////
             void placeText() const;
+
+            /////////////////////////////////////////////////
+            /// \brief Updates theme when the state changes
+            ///
+            /////////////////////////////////////////////////
+            virtual void refreshTheme() const override;
+
+            /////////////////////////////////////////////////
+            /// \brief Updates theme of text when the state changes
+            ///
+            /////////////////////////////////////////////////
+            void refreshTextTheme() const;
+
+            /////////////////////////////////////////////////
+            /// \brief Draws the text (does not update theme) Used only inside draw() method
+            ///
+            /////////////////////////////////////////////////
+            void drawText(sf::RenderTarget& target, sf::RenderStates states) const;
 
         private:
             /////////////////////////////////////////////////

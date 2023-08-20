@@ -381,6 +381,14 @@ void Widget::forceThemeUpdate() const
 
 void Widget::refreshTheme() const
 {
+    if (m_theme == nullptr)
+        return;
+
+    refreshRectangleTheme();
+}
+
+void Widget::refreshRectangleTheme() const
+{
     const DecorationSettings* decorationSettings = nullptr;
 
     switch (m_state)
@@ -415,7 +423,12 @@ void Widget::changeState(const WidgetState state)
 
 void Widget::draw(sf::RenderTarget& target, sf::RenderStates states) const
 {
-    // pure virtual
+    drawRectangle(target, states);
+}
+
+void Widget::drawRectangle(sf::RenderTarget& target, sf::RenderStates states) const
+{
+    target.draw(m_rectangle);
 }
 
 void Widget::processEvent(const sf::Event event, const sf::Vector2f& mousePosition)
@@ -479,7 +492,11 @@ void Widget::processEvent(const sf::Event event, const sf::Vector2f& mousePositi
 
 const sf::String TextBasedWidget::m_wordSeparators = L" \n\t";
 
-TextBasedWidget::TextBasedWidget() : Widget(), m_padding(5.0f, 10.0f), m_isMultiline(false), m_isTrimmable(true)
+TextBasedWidget::TextBasedWidget() :
+    Widget(),
+    m_padding(5.0f, 10.0f),
+    m_isMultiline(false),
+    m_isTrimmable(true)
 {
     //ctor
 }
@@ -539,6 +556,17 @@ void TextBasedWidget::setPosition(const sf::Vector2f& position)
 
 void TextBasedWidget::refreshTheme() const
 {
+    if (m_theme == nullptr)
+        return;
+
+    refreshRectangleTheme();
+    refreshTextTheme();
+
+    m_contentNeedsUpdate = true;
+}
+
+void TextBasedWidget::refreshTextTheme() const
+{
     const auto& textSettings = m_theme->getTextSettings();
     const DecorationSettings* decorationSettings = nullptr;
 
@@ -560,11 +588,6 @@ void TextBasedWidget::refreshTheme() const
             return;
     }
 
-    m_rectangle.setFillColor(decorationSettings->getFillColor());
-    m_rectangle.setOutlineThickness(decorationSettings->getOutlineThickness());
-    m_rectangle.setOutlineColor(decorationSettings->getOutlineColor());
-    m_rectangle.setTexture(decorationSettings->getBackgroundTexture());
-
     for (auto& line : m_lines)
     {
         line.setFont(textSettings.getFont());
@@ -572,8 +595,6 @@ void TextBasedWidget::refreshTheme() const
         line.setFillColor(decorationSettings->getTextColor());
         line.setStyle(decorationSettings->getTextStyle());
     }
-
-    m_contentNeedsUpdate = true;
 }
 
 sf::String TextBasedWidget::getString() const
@@ -793,21 +814,8 @@ void TextBasedWidget::placeText() const
     }
 }
 
-void TextBasedWidget::draw(sf::RenderTarget& target, sf::RenderStates states) const
+void TextBasedWidget::drawText(sf::RenderTarget& target, sf::RenderStates states) const
 {
-    if (m_state == WidgetState::Hidden)
-        return;
-
-    if (m_contentNeedsUpdate)
-    {
-        updateTextSplitting();
-        refreshTheme();
-        placeText();
-        m_contentNeedsUpdate = false;
-    }
-
-    target.draw(m_rectangle);
-
     // Clip text
     auto bounds = m_rectangle.getGlobalBounds();
     bounds.left += m_padding.x;
@@ -827,6 +835,23 @@ void TextBasedWidget::draw(sf::RenderTarget& target, sf::RenderStates states) co
         target.draw(line);
 
     target.setView(oldView);
+}
+
+void TextBasedWidget::draw(sf::RenderTarget& target, sf::RenderStates states) const
+{
+    if (m_state == WidgetState::Hidden)
+        return;
+
+    if (m_contentNeedsUpdate)
+    {
+        updateTextSplitting();
+        refreshTheme();
+        placeText();
+        m_contentNeedsUpdate = false;
+    }
+
+    drawRectangle(target, states);
+    drawText(target, states);
 }
 
 PushButton::PushButton() : TextBasedWidget()
@@ -1263,30 +1288,10 @@ void CheckBox::draw(sf::RenderTarget& target, sf::RenderStates states) const
         m_contentNeedsUpdate = false;
     }
 
-    target.draw(m_rectangle);
+    drawRectangle(target, states);
 
-    if (!m_isChecked)
-        return;
-
-    // Clip text
-    auto bounds = m_rectangle.getGlobalBounds();
-    bounds.left += m_padding.x;
-    bounds.top += m_padding.y;
-    bounds.width -= m_padding.x * 2;
-    bounds.height -= m_padding.y * 2;
-
-    const auto size = target.mapPixelToCoords(static_cast <sf::Vector2i>(target.getSize()));
-    sf::View view(bounds);
-    view.setViewport(sf::FloatRect(bounds.left / size.x, bounds.top / size.y,
-                                   bounds.width / size.x, bounds.height / size.y));
-
-    const auto oldView = target.getView();
-    target.setView(view);
-
-    for (const auto& line : m_lines)
-        target.draw(line);
-
-    target.setView(oldView);
+    if (m_isChecked)
+        drawText(target, states);
 }
 
 StaticText::StaticText() : TextBasedWidget()
