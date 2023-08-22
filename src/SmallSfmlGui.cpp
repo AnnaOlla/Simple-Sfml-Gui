@@ -1126,6 +1126,7 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
 
             if (isMouseInside && m_state != WidgetState::Pressed)
                 changeState(WidgetState::Pressed);
+
             break;
         }
 
@@ -1243,13 +1244,14 @@ void CheckBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosi
                     changeState(WidgetState::Hovered);
 
                 m_isChecked = !m_isChecked;
+
+                if (m_doActionOnButtonRelease != nullptr)
+                    m_doActionOnButtonRelease();
+
                 m_contentNeedsUpdate = true;
             }
             else
                 changeState(WidgetState::Idle);
-
-            if (m_doActionOnButtonRelease != nullptr)
-                m_doActionOnButtonRelease();
 
             break;
         }
