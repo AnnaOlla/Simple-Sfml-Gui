@@ -1237,9 +1237,6 @@ void CheckBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosi
 
         case sf::Event::MouseButtonReleased:
         {
-            if (m_doActionOnButtonRelease != nullptr)
-                m_doActionOnButtonRelease();
-
             if (isMouseInside)
             {
                 if (m_state == WidgetState::Pressed)
@@ -1250,6 +1247,9 @@ void CheckBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosi
             }
             else
                 changeState(WidgetState::Idle);
+
+            if (m_doActionOnButtonRelease != nullptr)
+                m_doActionOnButtonRelease();
 
             break;
         }
