@@ -323,9 +323,9 @@ void Widget::setBackgroundTextureRect(const sf::IntRect& rectangle)
     m_rectangle.setTextureRect(rectangle);
 }
 
-void Widget::setAction(const std::function <void()> doActionOnButtonRelease)
+void Widget::setAction(const sf::Event::EventType eventType, const std::function <void()> doAction)
 {
-    m_doActionOnButtonRelease = doActionOnButtonRelease;
+    m_doAction[eventType] = doAction;
 }
 
 sf::Vector2f Widget::getPosition() const
@@ -464,9 +464,6 @@ void Widget::processEvent(const sf::Event event, const sf::Vector2f& mousePositi
             if (event.mouseButton.button != sf::Mouse::Left)
                 break;
 
-            if (m_doActionOnButtonRelease != nullptr)
-                m_doActionOnButtonRelease();
-
             changeState(WidgetState::Hovered);
             break;
         }
@@ -488,6 +485,10 @@ void Widget::processEvent(const sf::Event event, const sf::Vector2f& mousePositi
         default:
             break;
     }
+
+    //const auto eventId = static_cast <int>(event);
+    if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+        m_doAction[event.type]();
 }
 
 const sf::String TextBasedWidget::m_wordSeparators = L" \n\t";
@@ -959,7 +960,7 @@ void DropDownList::addListItem(const sf::String& label, const std::function <voi
     m_items.emplace_back();
 
     m_items.back().setString(label);
-    m_items.back().setAction(doAction);
+    m_items.back().setAction(sf::Event::MouseButtonReleased, doAction);
     m_items.back().setTheme(*m_itemsTheme);
     m_items.back().setPadding(m_padding);
     m_items.back().setPosition({x, y});
@@ -1031,9 +1032,6 @@ void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mouse
             if (event.mouseButton.button != sf::Mouse::Left)
                 break;
 
-            if (m_doActionOnButtonRelease != nullptr)
-                m_doActionOnButtonRelease();
-
             if (isMouseInside)
             {
                 if (m_state == WidgetState::Pressed)
@@ -1081,6 +1079,9 @@ void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mouse
         default:
             break;
     }
+
+    if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+        m_doAction[event.type]();
 }
 
 TextBox::TextBox() : TextBasedWidget(), m_maxInputLength(sf::String::InvalidPos)
@@ -1135,9 +1136,6 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
             if (event.mouseButton.button != sf::Mouse::Left)
                 break;
 
-            if (m_doActionOnButtonRelease != nullptr)
-                m_doActionOnButtonRelease();
-
             if (!isMouseInside)
                 changeState(WidgetState::Idle);
 
@@ -1186,6 +1184,9 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
         default:
             break;
     }
+
+    if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+        m_doAction[event.type]();
 }
 
 CheckBox::CheckBox() : TextBasedWidget(), m_isChecked(false)
@@ -1244,10 +1245,6 @@ void CheckBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosi
                     changeState(WidgetState::Hovered);
 
                 m_isChecked = !m_isChecked;
-
-                if (m_doActionOnButtonRelease != nullptr)
-                    m_doActionOnButtonRelease();
-
                 m_contentNeedsUpdate = true;
             }
             else
@@ -1275,6 +1272,9 @@ void CheckBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosi
         default:
             break;
     }
+
+    if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+        m_doAction[event.type]();
 }
 
 void CheckBox::draw(sf::RenderTarget& target, sf::RenderStates states) const

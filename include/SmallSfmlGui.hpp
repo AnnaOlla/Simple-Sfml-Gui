@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <list>
+#include <set>
 #include <functional>
 #include <cmath>
 
@@ -531,7 +532,7 @@ namespace SmallGui
             /// \param doActionOnButtonRelease: a function to call
             ///
             /////////////////////////////////////////////////
-            void setAction(const std::function <void()> doActionOnButtonRelease);
+            void setAction(const sf::Event::EventType eventType, const std::function <void()> doAction);
 
             /////////////////////////////////////////////////
             /// \brief Gets the current position of the widget
@@ -604,11 +605,11 @@ namespace SmallGui
             /////////////////////////////////////////////////
             /// Member data
             /////////////////////////////////////////////////
-            mutable sf::RectangleShape m_rectangle;             //!< Rectangle that represents background and borders
-            const Theme* m_theme;                               //!< Pointer to the theme using which the widget is stylized
-            WidgetState m_state;                                //!< Current state of the widget
-            mutable bool m_contentNeedsUpdate;                    //!< Does the theme need to be updated?
-            std::function <void()> m_doActionOnButtonRelease;   //!< Function to be called on the left mouse button release
+            mutable sf::RectangleShape m_rectangle;                             //!< Rectangle that represents background and borders
+            const Theme* m_theme;                                               //!< Pointer to the theme using which the widget is stylized
+            WidgetState m_state;                                                //!< Current state of the widget
+            mutable bool m_contentNeedsUpdate;                                  //!< Does the theme need to be updated?
+            std::map <sf::Event::EventType, std::function <void()>> m_doAction; //!< Functions to be called on events
 
             /////////////////////////////////////////////////
             /// \brief Updates theme when the state changes
