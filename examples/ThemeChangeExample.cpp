@@ -92,9 +92,9 @@ int main()
     textArea.setMultilined(true);
 
     // Set actions for buttons
-    newFileButton.setAction([&textArea]() { textArea.setString(L""); });
+    newFileButton.setAction(sf::Event::MouseButtonReleased, [&textArea]() { textArea.setString(L""); });
 
-    saveFileButton.setAction([&textArea, &fileNameBox]()
+    saveFileButton.setAction(sf::Event::MouseButtonReleased, [&textArea, &fileNameBox]()
     {
         const auto fileName = fileNameBox.getString().toAnsiString();
         if (fileName.empty())
@@ -107,7 +107,7 @@ int main()
         fout << textArea.getString().toAnsiString();
     });
 
-    increaseSizeButton.setAction([&textAreaSettings, &ui]()
+    increaseSizeButton.setAction(sf::Event::MouseButtonReleased, [&textAreaSettings, &ui]()
     {
         // Widgets does not know automatically that something in DecorationSettings or TextSettings has been changed
         // This is why forcing update is necessary
@@ -116,7 +116,7 @@ int main()
         ui.forceThemeUpdate();
     });
 
-    decreaseSizeButton.setAction([&textAreaSettings, &ui]()
+    decreaseSizeButton.setAction(sf::Event::MouseButtonReleased, [&textAreaSettings, &ui]()
     {
         textAreaSettings.setCharacterSize(textAreaSettings.getCharacterSize() - 4);
         ui.forceThemeUpdate();

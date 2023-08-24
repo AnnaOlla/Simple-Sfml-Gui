@@ -67,7 +67,7 @@ int main()
     button.hide();
 
     // Set the actions for the checkbox:
-    checkbox.setAction([&textbox, &checkbox, &button]()
+    checkbox.setAction(sf::Event::MouseButtonReleased, [&textbox, &checkbox, &button]()
     {
         // If we want to set a custom checkmark, show elements to customize it
         if (checkbox.isChecked())
@@ -85,7 +85,7 @@ int main()
     });
 
     // Set the action to apply the new checkmark
-    button.setAction([&textbox, &checkbox, &staticText]()
+    button.setAction(sf::Event::MouseButtonReleased, [&textbox, &checkbox, &staticText]()
     {
         checkbox.setString(textbox.getString());
         checkbox.setSizeFitToText();

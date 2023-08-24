@@ -66,7 +66,7 @@ int main()
     helpMenu.setPosition(sf::Vector2f(fileMenu.getPosition().x + fileMenu.getSize().x, 0));
 
     helpMenu.setItemsTheme(menuItemTheme);
-    helpMenu.setAction([&helpMenu]() { helpMenu.setString(L"There is no help"); helpMenu.setSizeFitToText(); });
+    helpMenu.setAction(sf::Event::MouseButtonReleased, [&helpMenu]() { helpMenu.setString(L"There is no help"); helpMenu.setSizeFitToText(); });
 
     // Since there is no automatic menubar, draw it by yourself
     sf::RectangleShape menubar;
