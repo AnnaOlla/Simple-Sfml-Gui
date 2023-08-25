@@ -447,6 +447,10 @@ void Widget::processEvent(const sf::Event event, const sf::Vector2f& mousePositi
         case sf::Event::MouseLeft:
         {
             changeState(WidgetState::Idle);
+
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
+
             break;
         }
 
@@ -456,6 +460,10 @@ void Widget::processEvent(const sf::Event event, const sf::Vector2f& mousePositi
                 break;
 
             changeState(WidgetState::Pressed);
+
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
+
             break;
         }
 
@@ -465,38 +473,37 @@ void Widget::processEvent(const sf::Event event, const sf::Vector2f& mousePositi
                 break;
 
             changeState(WidgetState::Hovered);
+
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
+
             break;
         }
 
         case sf::Event::MouseMoved:
         {
-            // Prevent styles update on each frame
-            if (m_state == WidgetState::Hovered)
-                break;
+            if (m_state == WidgetState::Idle)
+                changeState(WidgetState::Hovered);
 
-            // Prevent style change if the widget is not released
-            if (m_state == WidgetState::Pressed)
-                break;
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
 
-            changeState(WidgetState::Hovered);
             break;
         }
 
         default:
-            break;
-    }
+        {
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
 
-    if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
-        m_doAction[event.type]();
+            break;
+        }
+    }
 }
 
 const sf::String TextBasedWidget::m_wordSeparators = L" \n\t";
 
-TextBasedWidget::TextBasedWidget() :
-    Widget(),
-    m_padding(5.0f, 10.0f),
-    m_isMultiline(false),
-    m_isTrimmable(true)
+TextBasedWidget::TextBasedWidget() : Widget(), m_padding(5.0f, 10.0f), m_isMultiline(false), m_isTrimmable(true)
 {
     //ctor
 }
@@ -1013,6 +1020,10 @@ void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mouse
         {
             if (m_state != WidgetState::Pressed)
                 changeState(WidgetState::Idle);
+
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
+
             break;
         }
 
@@ -1023,6 +1034,10 @@ void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mouse
 
             if (isMouseInside && m_state != WidgetState::Pressed)
                 changeState(WidgetState::Pressed);
+
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
+
             break;
         }
 
@@ -1051,6 +1066,9 @@ void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mouse
                     hideItems();
             }
 
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
+
             break;
         }
 
@@ -1072,15 +1090,20 @@ void DropDownList::processEvent(const sf::Event event, const sf::Vector2f& mouse
                     changeState(WidgetState::Idle);
             }
 
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
+
             break;
         }
 
         default:
-            break;
-    }
+        {
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
 
-    if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
-        m_doAction[event.type]();
+            break;
+        }
+    }
 }
 
 TextBox::TextBox() : TextBasedWidget(), m_maxInputLength(sf::String::InvalidPos)
@@ -1116,6 +1139,10 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
         {
             if (m_state != WidgetState::Pressed)
                 changeState(WidgetState::Idle);
+
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
+
             break;
         }
 
@@ -1127,6 +1154,9 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
             if (isMouseInside && m_state != WidgetState::Pressed)
                 changeState(WidgetState::Pressed);
 
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
+
             break;
         }
 
@@ -1137,6 +1167,9 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
 
             if (!isMouseInside)
                 changeState(WidgetState::Idle);
+
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
 
             break;
         }
@@ -1153,6 +1186,9 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
                 if (isMouseInside)
                     changeState(WidgetState::Hovered);
             }
+
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
 
             break;
         }
@@ -1177,15 +1213,21 @@ void TextBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosit
             }
 
             m_contentNeedsUpdate = true;
+
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
+
             break;
         }
 
         default:
-            break;
-    }
+        {
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
 
-    if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
-        m_doAction[event.type]();
+            break;
+        }
+    }
 }
 
 CheckBox::CheckBox() : TextBasedWidget(), m_isChecked(false)
@@ -1227,6 +1269,9 @@ void CheckBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosi
             if (m_state != WidgetState::Pressed)
                 changeState(WidgetState::Idle);
 
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
+
             break;
         }
 
@@ -1237,6 +1282,9 @@ void CheckBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosi
 
             if (m_state != WidgetState::Pressed)
                 changeState(WidgetState::Pressed);
+
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
 
             break;
         }
@@ -1250,6 +1298,10 @@ void CheckBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosi
                 m_isChecked = !m_isChecked;
 
             changeState(WidgetState::Hovered);
+
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
+
             break;
         }
 
@@ -1262,15 +1314,21 @@ void CheckBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosi
                 break;
 
             changeState(WidgetState::Hovered);
+
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
+
             break;
         }
 
         default:
-            break;
-    }
+        {
+            if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
+                m_doAction[event.type]();
 
-    if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
-        m_doAction[event.type]();
+            break;
+        }
+    }
 }
 
 void CheckBox::draw(sf::RenderTarget& target, sf::RenderStates states) const
