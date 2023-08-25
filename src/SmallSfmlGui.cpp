@@ -486,7 +486,6 @@ void Widget::processEvent(const sf::Event event, const sf::Vector2f& mousePositi
             break;
     }
 
-    //const auto eventId = static_cast <int>(event);
     if (m_doAction.find(event.type) != m_doAction.cend() && m_doAction[event.type] != nullptr)
         m_doAction[event.type]();
 }
@@ -1215,7 +1214,11 @@ void CheckBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosi
     if (m_state == WidgetState::Hidden)
         return;
 
-    const auto isMouseInside = m_rectangle.getGlobalBounds().contains(mousePosition);
+    if (!m_rectangle.getGlobalBounds().contains(mousePosition))
+    {
+        changeState(WidgetState::Idle);
+        return;
+    }
 
     switch (event.type)
     {
@@ -1223,49 +1226,42 @@ void CheckBox::processEvent(const sf::Event event, const sf::Vector2f& mousePosi
         {
             if (m_state != WidgetState::Pressed)
                 changeState(WidgetState::Idle);
+
             break;
         }
 
         case sf::Event::MouseButtonPressed:
         {
-            if (isMouseInside && m_state != WidgetState::Pressed)
-            {
+            if (event.mouseButton.button != sf::Mouse::Left)
+                break;
+
+            if (m_state != WidgetState::Pressed)
                 changeState(WidgetState::Pressed);
-                m_contentNeedsUpdate = true;
-            }
 
             break;
         }
 
         case sf::Event::MouseButtonReleased:
         {
-            if (isMouseInside)
-            {
-                if (m_state == WidgetState::Pressed)
-                    changeState(WidgetState::Hovered);
+            if (event.mouseButton.button != sf::Mouse::Left)
+                break;
 
+            if (m_state == WidgetState::Pressed)
                 m_isChecked = !m_isChecked;
-                m_contentNeedsUpdate = true;
-            }
-            else
-                changeState(WidgetState::Idle);
 
+            changeState(WidgetState::Hovered);
             break;
         }
 
         case sf::Event::MouseMoved:
         {
             if (m_state == WidgetState::Hovered)
-            {
-                if (!isMouseInside)
-                    changeState(WidgetState::Idle);
-            }
-            else if (m_state == WidgetState::Idle)
-            {
-                if (isMouseInside)
-                    changeState(WidgetState::Hovered);
-            }
+                break;
 
+            if (m_state == WidgetState::Pressed)
+                break;
+
+            changeState(WidgetState::Hovered);
             break;
         }
 
